@@ -147,7 +147,7 @@ export function DashboardPage() {
             <CardContent className="relative p-5 flex flex-col justify-between min-h-[180px] h-full">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
-                  Today's sales
+                  Today's Sales
                 </span>
                 <div className="h-8 w-8 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center">
                   <IndianRupee className="h-4 w-4 text-emerald-300" />
