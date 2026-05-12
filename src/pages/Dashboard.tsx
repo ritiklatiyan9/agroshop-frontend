@@ -142,7 +142,7 @@ export function DashboardPage() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <Card className="lg:col-span-4 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 text-black border-0 overflow-hidden relative">
+          <Card className="lg:col-span-4 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 text-white border-0 overflow-hidden relative">
             <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-emerald-400/20 blur-3xl" />
             <CardContent className="relative p-5 flex flex-col justify-between min-h-[180px] h-full">
               <div className="flex items-center justify-between">
