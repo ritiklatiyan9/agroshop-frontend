@@ -22,7 +22,7 @@ export function AppLayout() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onMenuClick={() => setMobileNavOpen(true)} />
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden lg:pb-0 pb-16">
           <Outlet />
         </main>
         <MobileBottomNav onMoreClick={() => setMobileNavOpen(true)} />

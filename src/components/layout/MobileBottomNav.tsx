@@ -16,7 +16,7 @@ const NAV_ITEMS = [
 
 export function MobileBottomNav({ onMoreClick }: Props) {
   return (
-    <nav className="lg:hidden border-t border-slate-200 bg-white flex h-16 items-stretch shrink-0">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white flex h-16 items-stretch">
       {NAV_ITEMS.map(({ label, to, icon: Icon }) => (
         <NavLink
           key={to}
