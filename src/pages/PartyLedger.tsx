@@ -61,7 +61,7 @@ export function PartyLedgerPage() {
   });
 
   return (
-    <div className="h-full flex flex-col p-6 gap-4 overflow-hidden">
+    <div className="h-full flex flex-col p-3 sm:p-6 gap-4 overflow-y-auto lg:overflow-hidden">
       <div className="flex-shrink-0">
         <PageHeader
           title={
@@ -91,7 +91,7 @@ export function PartyLedgerPage() {
       {data && (
         <>
           <Card className="flex-shrink-0">
-            <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <CardContent className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <Info label="Name" value={data.party.name} />
               <Info label="Type" value={<Badge>{data.party.type}</Badge>} />
               <Info label="Mobile" value={data.party.mobile || '—'} />
@@ -100,7 +100,7 @@ export function PartyLedgerPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 flex-shrink-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 flex-shrink-0">
             <Sum label="Opening balance" value={formatCurrency(data.opening_balance)} />
             <Sum label="Total billed" value={formatCurrency(data.summary.total_billed)} />
             <Sum label="Total paid" value={formatCurrency(data.summary.total_paid)} />
@@ -111,16 +111,16 @@ export function PartyLedgerPage() {
             />
           </div>
 
-          <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <CardContent className="p-4 flex flex-col h-full overflow-hidden">
-              <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-slate-100">
+          <Card className="lg:flex-1 lg:min-h-0 flex flex-col lg:overflow-hidden">
+            <CardContent className="p-4 flex flex-col lg:h-full lg:overflow-hidden">
+              <div className="overflow-x-auto lg:flex-1 lg:min-h-0 lg:overflow-auto rounded-lg border border-slate-100">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Description</TableHead>
+                      <TableHead className="hidden sm:table-cell">Reference</TableHead>
+                      <TableHead className="hidden md:table-cell">Description</TableHead>
                       <TableHead className="text-right">Debit</TableHead>
                       <TableHead className="text-right">Credit</TableHead>
                       <TableHead className="text-right">Balance</TableHead>
@@ -143,8 +143,8 @@ export function PartyLedgerPage() {
                             {e.type}
                           </Badge>
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{e.reference}</TableCell>
-                        <TableCell className="text-sm">{e.description}</TableCell>
+                        <TableCell className="hidden sm:table-cell font-mono text-xs">{e.reference}</TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">{e.description}</TableCell>
                         <TableCell className="text-right font-mono">
                           {e.debit > 0 ? formatCurrency(e.debit) : '—'}
                         </TableCell>

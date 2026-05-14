@@ -5,11 +5,15 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   ChevronRight,
+  FileText,
   IndianRupee,
   Package2,
   Plus,
+  Receipt,
   TrendingUp,
+  Users,
   Wallet,
+  Warehouse,
 } from 'lucide-react';
 import {
   Area,
@@ -116,7 +120,7 @@ export function DashboardPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-slate-50">
-      <div className="max-w-[1500px] mx-auto p-6 space-y-4">
+      <div className="max-w-[1500px] mx-auto p-3 sm:p-6 space-y-3 sm:space-y-4">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.14em]">
@@ -128,10 +132,10 @@ export function DashboardPage() {
             </p>
             <h1 className="mt-0.5 text-xl font-bold text-slate-900">
               {greeting()}
-              {user?.name ? `, ${user.name.split(' ')[0]}` : ''}
+              {user?.name ? `, ${user.name}` : ''}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => navigate('/bills/new')}>
               <Plus className="mr-1.5 h-4 w-4" /> Quick bill
             </Button>
@@ -141,10 +145,30 @@ export function DashboardPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Mobile quick actions */}
+        <div className="grid grid-cols-4 gap-2 sm:hidden">
+          {[
+            { icon: Receipt, label: 'GST Bill', to: '/bills/new-gst', bg: 'bg-emerald-50', iconCls: 'text-emerald-600', textCls: 'text-emerald-700' },
+            { icon: FileText, label: 'Non-GST', to: '/bills/new', bg: 'bg-sky-50', iconCls: 'text-sky-600', textCls: 'text-sky-700' },
+            { icon: Warehouse, label: 'Inventory', to: '/inventory', bg: 'bg-violet-50', iconCls: 'text-violet-600', textCls: 'text-violet-700' },
+            { icon: Users, label: 'Parties', to: '/parties', bg: 'bg-amber-50', iconCls: 'text-amber-600', textCls: 'text-amber-700' },
+          ].map(({ icon: Icon, label, to, bg, iconCls, textCls }) => (
+            <button
+              key={to}
+              type="button"
+              onClick={() => navigate(to)}
+              className={`flex flex-col items-center gap-1.5 rounded-2xl ${bg} px-1.5 py-3 transition-opacity active:opacity-70`}
+            >
+              <Icon className={`h-6 w-6 ${iconCls}`} />
+              <span className={`text-[10px] font-semibold leading-tight text-center ${textCls}`}>{label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
           <Card className="lg:col-span-4 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 text-white border-0 overflow-hidden relative">
             <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-emerald-400/20 blur-3xl" />
-            <CardContent className="relative p-5 flex flex-col justify-between min-h-[180px] h-full">
+            <CardContent className="relative p-4 sm:p-5 flex flex-col justify-between min-h-[150px] sm:min-h-[180px] h-full">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
                   Today's Sales
@@ -155,7 +179,7 @@ export function DashboardPage() {
               </div>
 
               <div>
-                <div className="text-3xl font-bold tabular-nums tracking-tight">
+                <div className="text-2xl sm:text-3xl font-bold tabular-nums tracking-tight">
                   {isLoading ? '…' : formatCurrency(data?.today.sales_amount ?? 0)}
                 </div>
                 <div className="flex items-center gap-2 text-[11px] text-slate-300 mt-1.5">
@@ -209,7 +233,7 @@ export function DashboardPage() {
                       </button>
                     ))}
                   </div>
-                  <div className="flex items-center gap-4 text-right">
+                  <div className="hidden sm:flex items-center gap-4 text-right">
                     <Stat
                       label="Revenue"
                       value={trendStats ? formatCurrency(trendStats.total) : '—'}
@@ -282,7 +306,7 @@ export function DashboardPage() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Metric
             label="This month"
             value={isLoading ? '…' : formatCurrency(data?.this_month.sales_amount ?? 0)}
@@ -320,7 +344,7 @@ export function DashboardPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
           <Card className="lg:col-span-7">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-4">
@@ -504,7 +528,7 @@ function Metric({
             </div>
             <div
               className={cn(
-                'mt-1.5 text-xl font-bold tabular-nums tracking-tight truncate',
+                'mt-1.5 text-base sm:text-xl font-bold tabular-nums tracking-tight truncate',
                 valueClassName ?? 'text-slate-900',
               )}
             >

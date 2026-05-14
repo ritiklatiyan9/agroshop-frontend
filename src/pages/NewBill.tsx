@@ -216,21 +216,23 @@ export function NewBillPage({ billType }: Props) {
   const isCredit = paymentMode === 'credit';
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-50/60">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-slate-50/60">
       <div className="flex-shrink-0 border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-20">
-        <div className="flex items-center justify-between gap-3 px-6 py-3">
-          <div className="flex items-center gap-3">
+        <div className="px-3 py-2.5 sm:px-6 sm:py-3">
+          <div className="flex items-start justify-between gap-2 sm:items-center">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate('/bills')}
               title="Back to bills"
+              className="h-9 w-9 shrink-0"
             >
               <X className="h-4 w-4" />
             </Button>
             <div
               className={cn(
-                'flex h-10 w-10 items-center justify-center rounded-xl shadow-sm',
+                'hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg shadow-sm min-[380px]:flex sm:h-10 sm:w-10 sm:rounded-xl',
                 billType === 'gst'
                   ? 'bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-700'
                   : 'bg-gradient-to-br from-sky-100 to-sky-50 text-sky-700',
@@ -242,16 +244,24 @@ export function NewBillPage({ billType }: Props) {
                 <FileText className="h-5 w-5" />
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-slate-900 leading-none">
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="truncate text-sm font-bold leading-tight text-slate-900 sm:text-base sm:leading-none">
                   New {billType === 'gst' ? 'GST' : 'Non-GST'} bill
                 </h1>
-                <Badge variant={billType === 'gst' ? 'success' : 'info'}>
+                <Badge className="hidden shrink-0 sm:inline-flex" variant={billType === 'gst' ? 'success' : 'info'}>
                   {billType === 'gst' ? 'Tax invoice' : 'Cash memo'}
                 </Badge>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1">
+              <div className="mt-1 flex items-center gap-2 sm:hidden">
+                <Badge className="px-2 py-0 text-[10px]" variant={billType === 'gst' ? 'success' : 'info'}>
+                  {billType === 'gst' ? 'Tax invoice' : 'Cash memo'}
+                </Badge>
+                <span className="truncate text-[11px] text-slate-500">
+                  {items.length} item{items.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <p className="hidden sm:block text-[11px] text-slate-500 mt-1">
                 Press{' '}
                 <kbd className="px-1 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-mono">
                   Ctrl
@@ -264,7 +274,7 @@ export function NewBillPage({ billType }: Props) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 sm:flex">
             <Button
               variant="outline"
               onClick={() => navigate('/bills')}
@@ -277,19 +287,45 @@ export function NewBillPage({ billType }: Props) {
               onClick={() => handleSave(false)}
               disabled={mutation.isPending}
             >
-              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <Save className="mr-2 h-4 w-4" /> Save
+              {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />}
+              <Save className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Save</span>
             </Button>
             <Button onClick={() => handleSave(true)} disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <Printer className="mr-2 h-4 w-4" /> Save & Print
+              <Printer className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Save & </span>Print
+            </Button>
+          </div>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:hidden">
+            <Button
+              variant="outline"
+              onClick={() => handleSave(false)}
+              disabled={mutation.isPending}
+              className="h-9"
+            >
+              {mutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              Save
+            </Button>
+            <Button onClick={() => handleSave(true)} disabled={mutation.isPending} className="h-9">
+              {mutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Printer className="mr-2 h-4 w-4" />
+              )}
+              Print
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 grid lg:grid-cols-[1fr_400px] overflow-hidden">
-        <div className="overflow-y-auto p-5 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[1fr_400px]">
+        <div className="p-3 pb-5 sm:p-5 space-y-3 sm:space-y-4 lg:overflow-y-auto">
           <Section
             icon={CalendarDays}
             title="Bill info"
@@ -400,7 +436,20 @@ export function NewBillPage({ billType }: Props) {
                 </p>
               </div>
             ) : (
-              <div className="mt-3 overflow-x-auto rounded-xl border border-slate-100">
+              <>
+                <div className="mt-3 space-y-3 sm:hidden">
+                  {items.map((row, i) => (
+                    <MobileItemCard
+                      key={row.uid}
+                      row={row}
+                      index={i}
+                      billType={billType}
+                      onUpdate={updateLine}
+                      onRemove={removeLine}
+                    />
+                  ))}
+                </div>
+                <div className="mt-3 hidden overflow-x-auto rounded-xl border border-slate-100 sm:block">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50">
                     <tr>
@@ -411,14 +460,14 @@ export function NewBillPage({ billType }: Props) {
                         Product
                       </th>
                       {billType === 'gst' && (
-                        <th className="text-left px-2 py-2.5 w-24 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
+                        <th className="hidden md:table-cell text-left px-2 py-2.5 w-24 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
                           HSN
                         </th>
                       )}
                       <th className="text-right px-2 py-2.5 w-24 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
                         Qty
                       </th>
-                      <th className="text-left px-2 py-2.5 w-20 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
+                      <th className="hidden sm:table-cell text-left px-2 py-2.5 w-20 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
                         Unit
                       </th>
                       <th className="text-right px-2 py-2.5 w-28 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
@@ -447,7 +496,7 @@ export function NewBillPage({ billType }: Props) {
                         <tr
                           key={row.uid}
                           className={cn(
-                            'border-t border-slate-100 transition-colors',
+                            'group border-t border-slate-100 transition-colors',
                             stockExceeded ? 'bg-red-50/40' : 'hover:bg-slate-50/60',
                           )}
                         >
@@ -469,7 +518,7 @@ export function NewBillPage({ billType }: Props) {
                             )}
                           </td>
                           {billType === 'gst' && (
-                            <td className="px-1.5 py-1.5">
+                            <td className="hidden md:table-cell px-1.5 py-1.5">
                               <Input
                                 value={row.hsn_code || ''}
                                 onChange={(e) =>
@@ -499,7 +548,7 @@ export function NewBillPage({ billType }: Props) {
                               </div>
                             )}
                           </td>
-                          <td className="px-1.5 py-1.5">
+                          <td className="hidden sm:table-cell px-1.5 py-1.5">
                             <Input
                               value={row.unit}
                               onChange={(e) => updateLine(row.uid, { unit: e.target.value })}
@@ -540,7 +589,7 @@ export function NewBillPage({ billType }: Props) {
                               variant="ghost"
                               size="icon"
                               onClick={() => removeLine(row.uid)}
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 hover:bg-red-50"
+                              className="h-8 w-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-50"
                               title="Remove"
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
@@ -552,6 +601,7 @@ export function NewBillPage({ billType }: Props) {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </Section>
 
@@ -565,7 +615,7 @@ export function NewBillPage({ billType }: Props) {
           </Section>
         </div>
 
-        <aside className="border-l border-slate-200 bg-white flex flex-col overflow-hidden">
+        <aside className="border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex flex-col lg:overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-gradient-to-br from-emerald-50/60 via-white to-white flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <Receipt className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
@@ -738,6 +788,129 @@ export function NewBillPage({ billType }: Props) {
             </button>
           </div>
         </aside>
+      </div>
+    </div>
+  );
+}
+
+function MobileItemCard({
+  row,
+  index,
+  billType,
+  onUpdate,
+  onRemove,
+}: {
+  row: Line;
+  index: number;
+  billType: BillType;
+  onUpdate: (uidKey: string, patch: Partial<Line>) => void;
+  onRemove: (uidKey: string) => void;
+}) {
+  const qty = Number(row.quantity) || 0;
+  const rate = Number(row.rate) || 0;
+  const gstRate = billType === 'gst' ? Number(row.gst_rate) || 0 : 0;
+  const taxable = qty * rate;
+  const lineAmount = taxable + (taxable * gstRate) / 100;
+  const stockExceeded = Boolean(row.product_id && qty > row.current_stock);
+
+  return (
+    <div
+      className={cn(
+        'rounded-lg border bg-white p-3 shadow-sm',
+        stockExceeded ? 'border-red-200 bg-red-50/40' : 'border-slate-200',
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold tabular-nums text-slate-500">
+          {index + 1}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <Input
+            value={row.product_name}
+            onChange={(e) => onUpdate(row.uid, { product_name: e.target.value })}
+            className="h-9 min-w-0 bg-white font-medium"
+          />
+          {row.product_id && (
+            <div className="px-1 text-[10px] text-slate-400">Stock: {row.current_stock}</div>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onRemove(row.uid)}
+          className="h-8 w-8 shrink-0 hover:bg-red-50"
+          title="Remove"
+        >
+          <Trash2 className="h-4 w-4 text-red-500" />
+        </Button>
+      </div>
+
+      {billType === 'gst' && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <FieldLabel label="HSN">
+            <Input
+              value={row.hsn_code || ''}
+              onChange={(e) => onUpdate(row.uid, { hsn_code: e.target.value })}
+              className="h-9 font-mono text-xs"
+            />
+          </FieldLabel>
+          <FieldLabel label="GST %">
+            <GstRateInput value={row.gst_rate ?? 0} onChange={(v) => onUpdate(row.uid, { gst_rate: v })} />
+          </FieldLabel>
+        </div>
+      )}
+
+      <div className="mt-3 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
+        <FieldLabel label="Qty">
+          <Input
+            type="number"
+            step="0.001"
+            value={row.quantity}
+            onChange={(e) => onUpdate(row.uid, { quantity: Number(e.target.value) })}
+            className={cn(
+              'h-9 text-right tabular-nums',
+              stockExceeded && 'border-red-500 bg-red-50 ring-1 ring-red-300 focus:ring-red-300',
+            )}
+          />
+        </FieldLabel>
+        <FieldLabel label="Rate">
+          <Input
+            type="number"
+            step="0.01"
+            value={row.rate}
+            onChange={(e) => onUpdate(row.uid, { rate: Number(e.target.value) })}
+            className="h-9 text-right tabular-nums"
+          />
+        </FieldLabel>
+        <FieldLabel label="Unit" className="col-span-2 min-[420px]:col-span-1">
+          <Input
+            value={row.unit}
+            onChange={(e) => onUpdate(row.uid, { unit: e.target.value })}
+            className="h-9 text-xs"
+          />
+        </FieldLabel>
+      </div>
+
+      {stockExceeded && (
+        <div className="mt-2 rounded-md border border-red-100 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
+          Max stock: {row.current_stock}
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Amount
+        </span>
+        <div className="min-w-0 text-right">
+          <div className="font-semibold tabular-nums text-slate-900">
+            {formatCurrency(lineAmount)}
+          </div>
+          {billType === 'gst' && gstRate > 0 && (
+            <div className="text-[10px] tabular-nums text-slate-500">
+              +{formatCurrency(lineAmount - taxable)} tax
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -59,18 +59,18 @@ export function OutstandingReportPage() {
   }
 
   return (
-    <div className="h-full flex flex-col p-6 gap-4 overflow-hidden">
+    <div className="h-full flex flex-col p-3 sm:p-6 gap-3 sm:gap-4 overflow-y-auto lg:overflow-hidden">
       <div className="flex-shrink-0">
         <PageHeader
           title="Outstanding report"
           description="Parties with unpaid credit sales, grouped."
           actions={
             <>
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer className="mr-2 h-4 w-4" /> Print / PDF
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
+                <Printer className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Print / PDF</span>
               </Button>
-              <Button variant="outline" onClick={exportCsv}>
-                <Download className="mr-2 h-4 w-4" /> Export CSV
+              <Button variant="outline" size="sm" onClick={exportCsv}>
+                <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Export CSV</span>
               </Button>
             </>
           }
@@ -88,20 +88,20 @@ export function OutstandingReportPage() {
         />
       </div>
 
-      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardContent className="p-4 flex flex-col h-full overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-slate-100">
+      <Card className="lg:flex-1 lg:min-h-0 flex flex-col lg:overflow-hidden">
+        <CardContent className="p-3 sm:p-4 flex flex-col lg:h-full lg:overflow-hidden">
+          <div className="overflow-x-auto lg:flex-1 lg:min-h-0 lg:overflow-auto rounded-lg border border-slate-100">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Party</TableHead>
-                  <TableHead>Mobile</TableHead>
-                  <TableHead className="text-right">Bills</TableHead>
-                  <TableHead className="text-right">Total amount</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
+                  <TableHead className="hidden sm:table-cell">Mobile</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Bills</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Total amount</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Paid</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
-                  <TableHead>Oldest unpaid</TableHead>
-                  <TableHead>Last activity</TableHead>
+                  <TableHead className="hidden md:table-cell">Oldest unpaid</TableHead>
+                  <TableHead className="hidden lg:table-cell">Last activity</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -127,19 +127,19 @@ export function OutstandingReportPage() {
                 {data?.data.map((r) => (
                   <TableRow key={r.party_id}>
                     <TableCell className="font-medium">{r.party_name}</TableCell>
-                    <TableCell>{r.mobile || '—'}</TableCell>
-                    <TableCell className="text-right">{r.total_bills}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(r.total_amount)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(r.total_paid)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{r.mobile || '—'}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-right">{r.total_bills}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(r.total_amount)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(r.total_paid)}</TableCell>
                     <TableCell className="text-right font-mono font-medium text-amber-700">
                       {formatCurrency(r.outstanding)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {r.oldest_unpaid_date
                         ? new Date(r.oldest_unpaid_date).toLocaleDateString('en-IN')
                         : '—'}
                     </TableCell>
-                    <TableCell>{new Date(r.last_activity).toLocaleDateString('en-IN')}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{new Date(r.last_activity).toLocaleDateString('en-IN')}</TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"

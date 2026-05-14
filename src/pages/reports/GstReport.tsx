@@ -85,7 +85,7 @@ export function GstReportPage() {
   for (let y = now.getFullYear() + 1; y >= now.getFullYear() - 4; y--) years.push(y);
 
   return (
-    <div className="h-full flex flex-col p-6 gap-4 overflow-hidden">
+    <div className="h-full flex flex-col p-3 sm:p-6 gap-3 sm:gap-4 overflow-y-auto lg:overflow-hidden">
       <div className="flex-shrink-0">
         <PageHeader
           title="GSTR-1 — HSN summary"
@@ -96,11 +96,11 @@ export function GstReportPage() {
           }
           actions={
             <>
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer className="mr-2 h-4 w-4" /> Print / PDF
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
+                <Printer className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Print / PDF</span>
               </Button>
-              <Button variant="outline" onClick={exportCsv}>
-                <Download className="mr-2 h-4 w-4" /> Download CSV for Tally
+              <Button variant="outline" size="sm" onClick={exportCsv}>
+                <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Download CSV</span>
               </Button>
             </>
           }
@@ -140,21 +140,21 @@ export function GstReportPage() {
         </Select>
       </div>
 
-      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardContent className="p-4 flex flex-col h-full overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-slate-100">
+      <Card className="lg:flex-1 lg:min-h-0 flex flex-col lg:overflow-hidden">
+        <CardContent className="p-3 sm:p-4 flex flex-col lg:h-full lg:overflow-hidden">
+          <div className="overflow-x-auto lg:flex-1 lg:min-h-0 lg:overflow-auto rounded-lg border border-slate-100">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>HSN</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>UOM</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Taxable value</TableHead>
-                  <TableHead className="text-right">CGST %</TableHead>
-                  <TableHead className="text-right">CGST amt</TableHead>
-                  <TableHead className="text-right">SGST %</TableHead>
-                  <TableHead className="text-right">SGST amt</TableHead>
+                  <TableHead className="hidden sm:table-cell">Description</TableHead>
+                  <TableHead className="hidden md:table-cell">UOM</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Qty</TableHead>
+                  <TableHead className="text-right">Taxable</TableHead>
+                  <TableHead className="hidden lg:table-cell text-right">CGST %</TableHead>
+                  <TableHead className="text-right">CGST</TableHead>
+                  <TableHead className="hidden lg:table-cell text-right">SGST %</TableHead>
+                  <TableHead className="text-right">SGST</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
@@ -180,13 +180,13 @@ export function GstReportPage() {
                 {data?.data.map((r, i) => (
                   <TableRow key={`${r.hsn}-${r.cgst_rate}-${i}`}>
                     <TableCell className="font-mono">{r.hsn}</TableCell>
-                    <TableCell>{r.description}</TableCell>
-                    <TableCell>{r.uom}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(r.qty, 2)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{r.description}</TableCell>
+                    <TableCell className="hidden md:table-cell">{r.uom}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-mono">{formatNumber(r.qty, 2)}</TableCell>
                     <TableCell className="text-right font-mono">{formatCurrency(r.taxable_value)}</TableCell>
-                    <TableCell className="text-right text-xs">{r.cgst_rate}%</TableCell>
+                    <TableCell className="hidden lg:table-cell text-right text-xs">{r.cgst_rate}%</TableCell>
                     <TableCell className="text-right font-mono">{formatCurrency(r.cgst_amount)}</TableCell>
-                    <TableCell className="text-right text-xs">{r.sgst_rate}%</TableCell>
+                    <TableCell className="hidden lg:table-cell text-right text-xs">{r.sgst_rate}%</TableCell>
                     <TableCell className="text-right font-mono">{formatCurrency(r.sgst_amount)}</TableCell>
                     <TableCell className="text-right font-mono font-medium">{formatCurrency(r.total)}</TableCell>
                   </TableRow>
@@ -195,18 +195,20 @@ export function GstReportPage() {
               {data && data.data.length > 0 && (
                 <TableFooter>
                   <TableRow>
-                    <TableCell colSpan={3} className="font-bold">Total</TableCell>
-                    <TableCell className="text-right font-mono font-bold">
+                    <TableCell className="font-bold">Total</TableCell>
+                    <TableCell className="hidden sm:table-cell"></TableCell>
+                    <TableCell className="hidden md:table-cell"></TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-mono font-bold">
                       {formatNumber(data.totals.qty, 2)}
                     </TableCell>
                     <TableCell className="text-right font-mono font-bold">
                       {formatCurrency(data.totals.taxable_value)}
                     </TableCell>
-                    <TableCell></TableCell>
+                    <TableCell className="hidden lg:table-cell"></TableCell>
                     <TableCell className="text-right font-mono font-bold">
                       {formatCurrency(data.totals.cgst_amount)}
                     </TableCell>
-                    <TableCell></TableCell>
+                    <TableCell className="hidden lg:table-cell"></TableCell>
                     <TableCell className="text-right font-mono font-bold">
                       {formatCurrency(data.totals.sgst_amount)}
                     </TableCell>

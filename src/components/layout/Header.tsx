@@ -51,23 +51,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-2">
-          {user?.logo_url ? (
-            <img src={user.logo_url} alt="Shop logo" className="h-8 w-8 rounded-md object-cover" />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-700 font-semibold">
-              {user?.shop_name?.[0]?.toUpperCase() || 'A'}
-            </div>
-          )}
-          <div className="leading-tight">
-            <div className="text-sm font-semibold text-slate-900">
-              {user?.shop_name || 'AgroShop Manager'}
-            </div>
-            {user?.shop_gstin && (
-              <div className="text-[11px] text-slate-500">GSTIN: {user.shop_gstin}</div>
-            )}
-          </div>
-        </div>
+     
       </div>
 
       <DropdownMenu>

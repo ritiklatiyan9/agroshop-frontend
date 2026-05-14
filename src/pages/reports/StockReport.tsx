@@ -86,18 +86,18 @@ export function StockReportPage() {
   }
 
   return (
-    <div className="h-full flex flex-col p-6 gap-4 overflow-hidden">
+    <div className="h-full flex flex-col p-3 sm:p-6 gap-3 sm:gap-4 overflow-y-auto lg:overflow-hidden">
       <div className="flex-shrink-0">
         <PageHeader
           title="Stock report"
           description="Current stock with value at cost, low-stock flags, and expiry alerts."
           actions={
             <>
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer className="mr-2 h-4 w-4" /> Print / PDF
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
+                <Printer className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Print / PDF</span>
               </Button>
-              <Button variant="outline" onClick={exportCsv}>
-                <Download className="mr-2 h-4 w-4" /> Export CSV
+              <Button variant="outline" size="sm" onClick={exportCsv}>
+                <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Export CSV</span>
               </Button>
             </>
           }
@@ -122,11 +122,11 @@ export function StockReportPage() {
         />
       </div>
 
-      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardContent className="p-4 flex flex-col h-full overflow-hidden gap-3">
+      <Card className="lg:flex-1 lg:min-h-0 flex flex-col lg:overflow-hidden">
+        <CardContent className="p-3 sm:p-4 flex flex-col lg:h-full lg:overflow-hidden gap-3">
           <div className="flex flex-wrap gap-2 flex-shrink-0">
             <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -137,7 +137,7 @@ export function StockReportPage() {
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-full sm:w-44">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -149,18 +149,18 @@ export function StockReportPage() {
             </Select>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-slate-100">
+          <div className="overflow-x-auto lg:flex-1 lg:min-h-0 lg:overflow-auto rounded-lg border border-slate-100">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Product</TableHead>
-                  <TableHead>Brand</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Unit</TableHead>
+                  <TableHead className="hidden sm:table-cell">Brand</TableHead>
+                  <TableHead className="hidden sm:table-cell">Category</TableHead>
+                  <TableHead className="hidden md:table-cell">Unit</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
-                  <TableHead className="text-right">Min</TableHead>
-                  <TableHead className="text-right">Stock value</TableHead>
-                  <TableHead>Expiry</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Min</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Stock value</TableHead>
+                  <TableHead className="hidden md:table-cell">Expiry</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -186,17 +186,17 @@ export function StockReportPage() {
                 {data?.data.map((p) => (
                   <TableRow key={p.id} className={rowClass(p.status)}>
                     <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.brand || '—'}</TableCell>
-                    <TableCell>{p.category || '—'}</TableCell>
-                    <TableCell>{p.unit}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{p.brand || '—'}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{p.category || '—'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{p.unit}</TableCell>
                     <TableCell className="text-right font-mono">
                       {formatNumber(p.current_stock, 2)}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-slate-500">
+                    <TableCell className="hidden md:table-cell text-right font-mono text-slate-500">
                       {formatNumber(p.min_stock_level, 2)}
                     </TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(p.stock_value)}</TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="hidden sm:table-cell text-right font-mono">{formatCurrency(p.stock_value)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">
                       {p.expiry_date ? new Date(p.expiry_date).toLocaleDateString('en-IN') : '—'}
                     </TableCell>
                     <TableCell>

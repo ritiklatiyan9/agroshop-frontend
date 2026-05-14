@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { MobileBottomNav } from './MobileBottomNav';
 
 export function AppLayout() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -24,6 +25,7 @@ export function AppLayout() {
         <main className="flex-1 overflow-hidden">
           <Outlet />
         </main>
+        <MobileBottomNav onMoreClick={() => setMobileNavOpen(true)} />
       </div>
     </div>
   );

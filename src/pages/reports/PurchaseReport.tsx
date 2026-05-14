@@ -73,18 +73,18 @@ export function PurchaseReportPage() {
   }
 
   return (
-    <div className="h-full flex flex-col p-6 gap-4 overflow-hidden">
+    <div className="h-full flex flex-col p-3 sm:p-6 gap-3 sm:gap-4 overflow-y-auto lg:overflow-hidden">
       <div className="flex-shrink-0">
         <PageHeader
           title="Purchase report"
           description="Stock-in entries from suppliers with payment status."
           actions={
             <>
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer className="mr-2 h-4 w-4" /> Print / PDF
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
+                <Printer className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Print / PDF</span>
               </Button>
-              <Button variant="outline" onClick={exportCsv}>
-                <Download className="mr-2 h-4 w-4" /> Export CSV
+              <Button variant="outline" size="sm" onClick={exportCsv}>
+                <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Export CSV</span>
               </Button>
             </>
           }
@@ -102,13 +102,13 @@ export function PurchaseReportPage() {
         />
       </div>
 
-      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardContent className="p-4 flex flex-col h-full overflow-hidden gap-3">
-          <div className="flex flex-wrap gap-2 flex-shrink-0">
-            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-44" />
-            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-44" />
+      <Card className="lg:flex-1 lg:min-h-0 flex flex-col lg:overflow-hidden">
+        <CardContent className="p-3 sm:p-4 flex flex-col lg:h-full lg:overflow-hidden gap-3">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 flex-shrink-0">
+            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full sm:w-44" />
+            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full sm:w-44" />
             <Select value={partyId} onValueChange={setPartyId}>
-              <SelectTrigger className="w-56">
+              <SelectTrigger className="w-full sm:w-56">
                 <SelectValue placeholder="Supplier" />
               </SelectTrigger>
               <SelectContent>
@@ -119,7 +119,7 @@ export function PurchaseReportPage() {
               </SelectContent>
             </Select>
             <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as typeof paymentStatus)}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-full sm:w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -131,17 +131,17 @@ export function PurchaseReportPage() {
             </Select>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-slate-100">
+          <div className="overflow-x-auto lg:flex-1 lg:min-h-0 lg:overflow-auto rounded-lg border border-slate-100">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Invoice #</TableHead>
+                  <TableHead className="hidden sm:table-cell">Invoice #</TableHead>
                   <TableHead>Supplier</TableHead>
-                  <TableHead className="text-right">Items</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Items</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Paid</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Balance</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -170,12 +170,12 @@ export function PurchaseReportPage() {
                   return (
                     <TableRow key={p.id}>
                       <TableCell>{new Date(p.purchase_date).toLocaleDateString('en-IN')}</TableCell>
-                      <TableCell>{p.invoice_number || '—'}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{p.invoice_number || '—'}</TableCell>
                       <TableCell>{p.party?.name || '—'}</TableCell>
-                      <TableCell className="text-right">{p.item_count ?? '—'}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-right">{p.item_count ?? '—'}</TableCell>
                       <TableCell className="text-right font-mono">{formatCurrency(p.total_amount)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(p.paid_amount)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(balance)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(p.paid_amount)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(balance)}</TableCell>
                       <TableCell>
                         <Badge
                           variant={

@@ -89,18 +89,18 @@ export function SalesReportPage() {
   }
 
   return (
-    <div className="h-full flex flex-col p-6 gap-4 overflow-hidden">
+    <div className="h-full flex flex-col p-3 sm:p-6 gap-3 sm:gap-4 overflow-y-auto lg:overflow-hidden">
       <div className="flex-shrink-0">
         <PageHeader
           title="Sales report"
           description="Filter sales by date, party, type, payment status. Export to CSV or print as PDF."
           actions={
             <>
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer className="mr-2 h-4 w-4" /> Print / PDF
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
+                <Printer className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Print / PDF</span>
               </Button>
-              <Button variant="outline" onClick={exportCsv}>
-                <Download className="mr-2 h-4 w-4" /> Export CSV
+              <Button variant="outline" size="sm" onClick={exportCsv}>
+                <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Export CSV</span>
               </Button>
             </>
           }
@@ -121,10 +121,10 @@ export function SalesReportPage() {
         />
       </div>
 
-      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <CardContent className="p-4 flex flex-col h-full overflow-hidden gap-3">
-          <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-            <div className="relative flex-1 min-w-[200px]">
+      <Card className="lg:flex-1 lg:min-h-0 flex flex-col lg:overflow-hidden">
+        <CardContent className="p-3 sm:p-4 flex flex-col lg:h-full lg:overflow-hidden gap-3">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 flex-shrink-0">
+            <div className="relative col-span-2 sm:flex-1 sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search bill # or customer..."
@@ -137,19 +137,19 @@ export function SalesReportPage() {
               type="date"
               value={fromDate}
               onChange={(e) => { setFromDate(e.target.value); setPage(1); }}
-              className="w-44"
+              className="w-full sm:w-44"
             />
             <Input
               type="date"
               value={toDate}
               onChange={(e) => { setToDate(e.target.value); setPage(1); }}
-              className="w-44"
+              className="w-full sm:w-44"
             />
             <Select
               value={partyId}
               onValueChange={(v) => { setPartyId(v); setPage(1); }}
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Party" />
               </SelectTrigger>
               <SelectContent>
@@ -165,7 +165,7 @@ export function SalesReportPage() {
               value={billType}
               onValueChange={(v) => { setBillType(v as typeof billType); setPage(1); }}
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full sm:w-32">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -178,7 +178,7 @@ export function SalesReportPage() {
               value={paymentStatus}
               onValueChange={(v) => { setPaymentStatus(v as typeof paymentStatus); setPage(1); }}
             >
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-full sm:w-36">
                 <SelectValue placeholder="Payment" />
               </SelectTrigger>
               <SelectContent>
@@ -190,16 +190,16 @@ export function SalesReportPage() {
             </Select>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-slate-100">
+          <div className="overflow-x-auto lg:flex-1 lg:min-h-0 lg:overflow-auto rounded-lg border border-slate-100">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Bill #</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="hidden sm:table-cell">Date</TableHead>
                   <TableHead>Party</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Taxable</TableHead>
-                  <TableHead className="text-right">GST</TableHead>
+                  <TableHead className="hidden sm:table-cell">Type</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Taxable</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">GST</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead></TableHead>
@@ -229,15 +229,15 @@ export function SalesReportPage() {
                   return (
                     <TableRow key={b.id}>
                       <TableCell className="font-mono font-medium">{b.bill_number}</TableCell>
-                      <TableCell>{new Date(b.bill_date).toLocaleDateString('en-IN')}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{new Date(b.bill_date).toLocaleDateString('en-IN')}</TableCell>
                       <TableCell>{b.customer_name || b.party?.name || '—'}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <Badge variant={b.bill_type === 'gst' ? 'info' : 'muted'}>
                           {b.bill_type === 'gst' ? 'GST' : 'NON-GST'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(b.subtotal)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(gst)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(b.subtotal)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(gst)}</TableCell>
                       <TableCell className="text-right font-mono">{formatCurrency(b.grand_total)}</TableCell>
                       <TableCell>
                         <Badge

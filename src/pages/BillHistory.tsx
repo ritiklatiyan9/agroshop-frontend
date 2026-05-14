@@ -66,7 +66,7 @@ export function BillHistoryPage() {
   });
 
   return (
-    <div className="h-full flex flex-col p-6 gap-4 overflow-hidden">
+    <div className="h-full flex flex-col p-3 sm:p-6 gap-4 overflow-hidden">
       <div className="flex-shrink-0">
         <PageHeader
           title="Bill history"
@@ -103,8 +103,8 @@ export function BillHistoryPage() {
 
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <CardContent className="p-4 flex flex-col h-full overflow-hidden gap-3">
-          <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-            <div className="relative flex-1 min-w-[220px]">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 flex-shrink-0">
+            <div className="col-span-2 relative sm:flex-1 sm:min-w-[220px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search bill # or customer..."
@@ -123,7 +123,7 @@ export function BillHistoryPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-full sm:w-36">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -139,7 +139,7 @@ export function BillHistoryPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Payment" />
               </SelectTrigger>
               <SelectContent>
@@ -156,7 +156,7 @@ export function BillHistoryPage() {
                 setFromDate(e.target.value);
                 setPage(1);
               }}
-              className="w-44"
+              className="w-full sm:w-44"
             />
             <Input
               type="date"
@@ -165,7 +165,7 @@ export function BillHistoryPage() {
                 setToDate(e.target.value);
                 setPage(1);
               }}
-              className="w-44"
+              className="w-full sm:w-44"
             />
           </div>
 
@@ -174,13 +174,13 @@ export function BillHistoryPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Bill #</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="hidden sm:table-cell">Date</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Items</TableHead>
+                  <TableHead className="hidden sm:table-cell">Type</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Items</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Paid</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Balance</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -210,19 +210,19 @@ export function BillHistoryPage() {
                   return (
                     <TableRow key={b.id} className={isCancelled ? 'opacity-60' : ''}>
                       <TableCell className="font-mono font-medium">{b.bill_number}</TableCell>
-                      <TableCell>{new Date(b.bill_date).toLocaleDateString('en-IN')}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{new Date(b.bill_date).toLocaleDateString('en-IN')}</TableCell>
                       <TableCell className="font-medium">
                         {b.customer_name || b.party?.name || '—'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <Badge variant={b.bill_type === 'gst' ? 'info' : 'muted'}>
                           {b.bill_type === 'gst' ? 'GST' : 'NON-GST'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">{b.item_count ?? '—'}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right">{b.item_count ?? '—'}</TableCell>
                       <TableCell className="text-right font-mono">{formatCurrency(b.grand_total)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(b.paid_amount)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(balance)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(b.paid_amount)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(balance)}</TableCell>
                       <TableCell>
                         {isCancelled ? (
                           <Badge variant="danger">Cancelled</Badge>
