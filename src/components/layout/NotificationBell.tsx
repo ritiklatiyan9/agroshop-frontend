@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Eye, EyeOff, Package, Clock, TrendingUp, Wallet, CheckCheck, X } from 'lucide-react';
+import { Bell, Eye, EyeOff, Package, Clock, TrendingUp, Wallet, CheckCheck, X, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type Severity = 'danger' | 'warning' | 'info';
-type NotifType = 'low_stock' | 'expiring_soon' | 'daily_sales' | 'unpaid_purchase';
+type Severity = 'danger' | 'warning' | 'info' | 'success';
+type NotifType = 'low_stock' | 'expiring_soon' | 'daily_sales' | 'unpaid_purchase' | 'action';
 
 interface NotificationItem {
   key: string;
@@ -29,24 +29,14 @@ const ICON: Record<NotifType, React.ReactNode> = {
   expiring_soon: <Clock className="h-4 w-4" />,
   daily_sales: <TrendingUp className="h-4 w-4" />,
   unpaid_purchase: <Wallet className="h-4 w-4" />,
+  action: <CheckCircle2 className="h-4 w-4" />,
 };
 
 const SEVERITY_STYLES: Record<Severity, { card: string; icon: string; badge: string }> = {
-  danger: {
-    card: 'border-red-100 bg-red-50/50',
-    icon: 'bg-red-100 text-red-600',
-    badge: 'bg-red-500',
-  },
-  warning: {
-    card: 'border-amber-100 bg-amber-50/50',
-    icon: 'bg-amber-100 text-amber-600',
-    badge: 'bg-amber-500',
-  },
-  info: {
-    card: 'border-blue-100 bg-blue-50/50',
-    icon: 'bg-blue-100 text-blue-600',
-    badge: 'bg-blue-500',
-  },
+  danger: { card: 'border-red-100 bg-red-50/50', icon: 'bg-red-100 text-red-600', badge: 'bg-red-500' },
+  warning: { card: 'border-amber-100 bg-amber-50/50', icon: 'bg-amber-100 text-amber-600', badge: 'bg-amber-500' },
+  info: { card: 'border-blue-100 bg-blue-50/50', icon: 'bg-blue-100 text-blue-600', badge: 'bg-blue-500' },
+  success: { card: 'border-emerald-100 bg-emerald-50/50', icon: 'bg-emerald-100 text-emerald-600', badge: 'bg-emerald-500' },
 };
 
 export function NotificationBell() {

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { BillRow } from '@/types';
+import { useActionNotify } from '@/hooks/useActionNotify';
 
 interface Props {
   bill: BillRow | null;
@@ -24,6 +25,7 @@ interface Props {
 
 export function CancelBillDialog({ bill, open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
+  const { notify } = useActionNotify();
   const [reason, setReason] = useState('');
 
   const mutation = useMutation({
@@ -33,6 +35,7 @@ export function CancelBillDialog({ bill, open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       toast.success('Bill cancelled — stock restored');
+      notify('Bill Cancelled', `Bill ${bill?.bill_number ?? ''} cancelled and stock restored`);
       queryClient.invalidateQueries({ queryKey: ['bills'] });
       queryClient.invalidateQueries({ queryKey: ['bill', bill?.id] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });

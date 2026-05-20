@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSuppliers } from '@/hooks/useParties';
+import { useActionNotify } from '@/hooks/useActionNotify';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import type { Purchase } from '@/types';
 
@@ -34,6 +35,7 @@ interface Props {
 
 export function EditPurchaseDialog({ purchaseId, open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
+  const { notify } = useActionNotify();
   const { data: suppliers = [] } = useSuppliers();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,6 +115,8 @@ export function EditPurchaseDialog({ purchaseId, open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       toast.success('Purchase updated');
+      const supplier = suppliers.find((s) => s.id === partyId);
+      notify('Purchase Updated', `Purchase from ${supplier?.name ?? 'supplier'} has been updated`);
       queryClient.invalidateQueries({ queryKey: ['purchases'] });
       queryClient.invalidateQueries({ queryKey: ['purchase', purchaseId] });
       queryClient.invalidateQueries({ queryKey: ['parties'] });

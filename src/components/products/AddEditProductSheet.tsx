@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2, Upload } from 'lucide-react';
+import { useActionNotify } from '@/hooks/useActionNotify';
 import { api } from '@/lib/axios';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,7 @@ interface Props {
 
 export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
   const queryClient = useQueryClient();
+  const { notify } = useActionNotify();
   const { data: categories = [] } = useCategories();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -123,8 +125,9 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, values) => {
       toast.success(product ? 'Product updated' : 'Product created');
+      notify(product ? 'Product Updated' : 'Product Added', `${values.name} has been ${product ? 'updated' : 'added'} successfully`);
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       onOpenChange(false);

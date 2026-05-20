@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { openBillPrint } from '@/lib/printBill';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -35,6 +36,7 @@ import { PartySearchSelect } from '@/components/billing/PartySearchSelect';
 import { useAllProducts } from '@/hooks/useProducts';
 import { useParties } from '@/hooks/useParties';
 import { useAuthStore } from '@/store/authStore';
+import { useActionNotify } from '@/hooks/useActionNotify';
 import { calculateBill, type BillItemInput, type BillType } from '@/lib/billCalculator';
 import { cn, formatCurrency } from '@/lib/utils';
 import { inrInWords } from '@/lib/numberToWords';
@@ -58,6 +60,7 @@ export function NewBillPage({ billType }: Props) {
   const user = useAuthStore((s) => s.user);
   const { data: products = [] } = useAllProducts();
   const { data: parties = [] } = useParties('customer');
+  const { notify } = useActionNotify();
 
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
   const [party, setParty] = useState<Party | null>(null);
@@ -193,8 +196,9 @@ export function NewBillPage({ billType }: Props) {
     try {
       const bill = await mutation.mutateAsync();
       toast.success(`Bill ${bill.bill_number} created`);
+      notify('Bill Created', `${bill.bill_number} for ${customerName} saved successfully`);
       if (printAfter || user?.auto_print_after_save) {
-        window.open(`/bills/print/${bill.id}`, '_blank');
+        openBillPrint(bill.id, navigate);
       }
       navigate('/bills');
     } catch (err) {

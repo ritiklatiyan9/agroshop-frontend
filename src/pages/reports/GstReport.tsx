@@ -1,54 +1,31 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Printer, Info } from 'lucide-react';
+import { Download, Printer, Info, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/axios';
 import { downloadCsv } from '@/lib/download';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-  TableFooter,
+  Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableFooter,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 
 interface GstRow {
-  hsn: string;
-  description: string;
-  uom: string;
-  qty: number;
-  taxable_value: number;
-  cgst_rate: number;
-  cgst_amount: number;
-  sgst_rate: number;
-  sgst_amount: number;
-  total: number;
+  hsn: string; description: string; uom: string; qty: number;
+  taxable_value: number; cgst_rate: number; cgst_amount: number;
+  sgst_rate: number; sgst_amount: number; total: number;
 }
 
 interface GstResponse {
   period: { month: number; year: number; from: string; to: string };
   data: GstRow[];
-  totals: {
-    qty: number;
-    taxable_value: number;
-    cgst_amount: number;
-    sgst_amount: number;
-    total: number;
-  };
+  totals: { qty: number; taxable_value: number; cgst_amount: number; sgst_amount: number; total: number };
 }
 
 const MONTHS = [
@@ -71,157 +48,191 @@ export function GstReportPage() {
 
   async function exportCsv() {
     try {
-      await downloadCsv(
-        '/reports/gstr1',
-        { month, year },
-        `gstr1-${year}-${String(month).padStart(2, '0')}.csv`,
-      );
-    } catch {
-      toast.error('Export failed');
-    }
+      await downloadCsv('/reports/gstr1', { month, year }, `gstr1-${year}-${String(month).padStart(2, '0')}.csv`);
+    } catch { toast.error('Export failed'); }
   }
 
   const years: number[] = [];
   for (let y = now.getFullYear() + 1; y >= now.getFullYear() - 4; y--) years.push(y);
 
   return (
-    <div className="h-full flex flex-col p-3 sm:p-6 gap-3 sm:gap-4 overflow-y-auto lg:overflow-hidden">
-      <div className="flex-shrink-0">
+    <div className="h-full flex flex-col overflow-hidden bg-slate-50">
+
+      {/* ── Desktop header ── */}
+      <div className="hidden lg:block flex-shrink-0 p-6 pb-0">
         <PageHeader
-          title="GSTR-1 — HSN summary"
-          description={
-            data
-              ? `${MONTHS[month - 1]} ${year} · ${data.period.from} to ${data.period.to}`
-              : 'HSN-wise outward supply for filing.'
-          }
+          title="GSTR-1 — HSN Summary"
+          description={data ? `${MONTHS[month - 1]} ${year} · ${data.period.from} to ${data.period.to}` : 'HSN-wise outward supply for filing.'}
           actions={
             <>
-              <Button variant="outline" size="sm" onClick={() => window.print()}>
-                <Printer className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Print / PDF</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={exportCsv}>
-                <Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Download CSV</span>
-              </Button>
+              <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-2" /> Print / PDF</Button>
+              <Button variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4 mr-2" /> Download CSV</Button>
             </>
           }
         />
       </div>
 
-      <Card className="border-amber-200 bg-amber-50/60 flex-shrink-0">
-        <CardContent className="p-3 flex items-start gap-2">
-          <Info className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
-          <p className="text-xs text-amber-800">
-            This is a summary report aggregated from GST bills only. Please verify the figures with your CA
-            before filing GSTR-1.
-          </p>
-        </CardContent>
-      </Card>
-
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {MONTHS.map((m, i) => (
-              <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-          <SelectTrigger className="w-28">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map((y) => (
-              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* ── Mobile header ── */}
+      <div className="lg:hidden flex-shrink-0 px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">GST Report</h1>
+            <p className="text-xs text-slate-500 mt-0.5">GSTR-1 HSN Summary</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => window.print()} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 active:bg-slate-50"><Printer className="h-4 w-4" /></button>
+            <button onClick={exportCsv} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 active:bg-slate-50"><Download className="h-4 w-4" /></button>
+          </div>
+        </div>
       </div>
 
-      <Card className="lg:flex-1 lg:min-h-0 flex flex-col lg:overflow-hidden">
-        <CardContent className="p-3 sm:p-4 flex flex-col lg:h-full lg:overflow-hidden">
-          <div className="overflow-x-auto lg:flex-1 lg:min-h-0 lg:overflow-auto rounded-lg border border-slate-100">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>HSN</TableHead>
-                  <TableHead className="hidden sm:table-cell">Description</TableHead>
-                  <TableHead className="hidden md:table-cell">UOM</TableHead>
-                  <TableHead className="hidden md:table-cell text-right">Qty</TableHead>
-                  <TableHead className="text-right">Taxable</TableHead>
-                  <TableHead className="hidden lg:table-cell text-right">CGST %</TableHead>
-                  <TableHead className="text-right">CGST</TableHead>
-                  <TableHead className="hidden lg:table-cell text-right">SGST %</TableHead>
-                  <TableHead className="text-right">SGST</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading && (
-                  <>
-                    {[...Array(6)].map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell colSpan={10}>
-                          <Skeleton className="h-8 w-full" />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </>
-                )}
-                {data && data.data.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-center py-10 text-slate-500">
-                      No GST bills in this period.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {data?.data.map((r, i) => (
-                  <TableRow key={`${r.hsn}-${r.cgst_rate}-${i}`}>
-                    <TableCell className="font-mono">{r.hsn}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{r.description}</TableCell>
-                    <TableCell className="hidden md:table-cell">{r.uom}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right font-mono">{formatNumber(r.qty, 2)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(r.taxable_value)}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-right text-xs">{r.cgst_rate}%</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(r.cgst_amount)}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-right text-xs">{r.sgst_rate}%</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(r.sgst_amount)}</TableCell>
-                    <TableCell className="text-right font-mono font-medium">{formatCurrency(r.total)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              {data && data.data.length > 0 && (
-                <TableFooter>
-                  <TableRow>
-                    <TableCell className="font-bold">Total</TableCell>
-                    <TableCell className="hidden sm:table-cell"></TableCell>
-                    <TableCell className="hidden md:table-cell"></TableCell>
-                    <TableCell className="hidden md:table-cell text-right font-mono font-bold">
-                      {formatNumber(data.totals.qty, 2)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-bold">
-                      {formatCurrency(data.totals.taxable_value)}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell"></TableCell>
-                    <TableCell className="text-right font-mono font-bold">
-                      {formatCurrency(data.totals.cgst_amount)}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell"></TableCell>
-                    <TableCell className="text-right font-mono font-bold">
-                      {formatCurrency(data.totals.sgst_amount)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-bold">
-                      {formatCurrency(data.totals.total)}
-                    </TableCell>
-                  </TableRow>
-                </TableFooter>
-              )}
-            </Table>
+      {/* ── Period selector ── */}
+      <div className="flex-shrink-0 px-4 lg:px-6 pt-3 pb-2">
+        <div className="flex gap-2">
+          <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+            <SelectTrigger className="w-40 bg-white"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+            <SelectTrigger className="w-28 bg-white"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* ── Disclaimer ── */}
+      <div className="flex-shrink-0 px-4 lg:px-6 pb-2">
+        <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
+          <Info className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
+          <p className="text-xs text-amber-800">Summary from GST bills only. Verify with your CA before filing GSTR-1.</p>
+        </div>
+      </div>
+
+      {/* ── Mobile: Summary stats + HSN cards ── */}
+      <div className="lg:hidden flex-1 overflow-y-auto px-4 pb-24 space-y-3">
+        {data && data.totals && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-white border border-slate-100 p-3 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Taxable Value</p>
+              <p className="mt-1 text-base font-bold text-slate-900 leading-none">{formatCurrency(data.totals.taxable_value)}</p>
+            </div>
+            <div className="rounded-xl bg-white border border-slate-100 p-3 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Total Tax</p>
+              <p className="mt-1 text-base font-bold text-slate-900 leading-none">{formatCurrency(data.totals.cgst_amount + data.totals.sgst_amount)}</p>
+            </div>
+            <div className="rounded-xl bg-white border border-slate-100 p-3 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">CGST</p>
+              <p className="mt-1 text-base font-bold text-slate-900 leading-none">{formatCurrency(data.totals.cgst_amount)}</p>
+            </div>
+            <div className="rounded-xl bg-white border border-emerald-100 p-3 shadow-sm">
+              <p className="text-[10px] uppercase tracking-wide text-emerald-500 font-medium">Grand Total</p>
+              <p className="mt-1 text-base font-bold text-emerald-700 leading-none">{formatCurrency(data.totals.total)}</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        {isLoading && [...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)}
+
+        {!isLoading && (data?.data ?? []).length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <FileSpreadsheet className="h-14 w-14 mb-3 opacity-20" />
+            <p className="text-sm font-medium">No GST bills in this period</p>
+          </div>
+        )}
+
+        {data?.data.map((r, i) => (
+          <div key={`${r.hsn}-${r.cgst_rate}-${i}`} className="rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-bold text-slate-800">{r.hsn}</span>
+                  <span className="text-xs text-slate-400">{r.uom} · GST {r.cgst_rate * 2}%</span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">{r.description}</p>
+                <p className="text-xs text-slate-400 mt-1">Qty: {formatNumber(r.qty, 2)}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="font-mono font-bold text-slate-900">{formatCurrency(r.total)}</p>
+                <p className="text-xs text-slate-400 mt-0.5">Taxable {formatCurrency(r.taxable_value)}</p>
+              </div>
+            </div>
+            <div className="flex gap-4 mt-3 pt-2 border-t border-slate-50">
+              <div className="text-xs">
+                <span className="text-slate-400">CGST: </span>
+                <span className="font-mono font-medium text-slate-700">{formatCurrency(r.cgst_amount)}</span>
+              </div>
+              <div className="text-xs">
+                <span className="text-slate-400">SGST: </span>
+                <span className="font-mono font-medium text-slate-700">{formatCurrency(r.sgst_amount)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Desktop layout ── */}
+      <div className="hidden lg:flex flex-col flex-1 min-h-0 p-6 pt-0 gap-3 overflow-hidden">
+        <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <CardContent className="p-3 sm:p-4 flex flex-col h-full overflow-hidden">
+            <div className="overflow-x-auto flex-1 min-h-0 overflow-auto rounded-lg border border-slate-100">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>HSN</TableHead>
+                    <TableHead className="hidden sm:table-cell">Description</TableHead>
+                    <TableHead className="hidden md:table-cell">UOM</TableHead>
+                    <TableHead className="hidden md:table-cell text-right">Qty</TableHead>
+                    <TableHead className="text-right">Taxable</TableHead>
+                    <TableHead className="hidden lg:table-cell text-right">CGST %</TableHead>
+                    <TableHead className="text-right">CGST</TableHead>
+                    <TableHead className="hidden lg:table-cell text-right">SGST %</TableHead>
+                    <TableHead className="text-right">SGST</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading && [...Array(6)].map((_, i) => <TableRow key={i}><TableCell colSpan={10}><Skeleton className="h-8 w-full" /></TableCell></TableRow>)}
+                  {data && data.data.length === 0 && <TableRow><TableCell colSpan={10} className="text-center py-10 text-slate-500">No GST bills in this period.</TableCell></TableRow>}
+                  {data?.data.map((r, i) => (
+                    <TableRow key={`${r.hsn}-${r.cgst_rate}-${i}`}>
+                      <TableCell className="font-mono">{r.hsn}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{r.description}</TableCell>
+                      <TableCell className="hidden md:table-cell">{r.uom}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right font-mono">{formatNumber(r.qty, 2)}</TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(r.taxable_value)}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-right text-xs">{r.cgst_rate}%</TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(r.cgst_amount)}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-right text-xs">{r.sgst_rate}%</TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(r.sgst_amount)}</TableCell>
+                      <TableCell className="text-right font-mono font-medium">{formatCurrency(r.total)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                {data && data.data.length > 0 && (
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell className="font-bold">Total</TableCell>
+                      <TableCell className="hidden sm:table-cell" />
+                      <TableCell className="hidden md:table-cell" />
+                      <TableCell className="hidden md:table-cell text-right font-mono font-bold">{formatNumber(data.totals.qty, 2)}</TableCell>
+                      <TableCell className="text-right font-mono font-bold">{formatCurrency(data.totals.taxable_value)}</TableCell>
+                      <TableCell className="hidden lg:table-cell" />
+                      <TableCell className="text-right font-mono font-bold">{formatCurrency(data.totals.cgst_amount)}</TableCell>
+                      <TableCell className="hidden lg:table-cell" />
+                      <TableCell className="text-right font-mono font-bold">{formatCurrency(data.totals.sgst_amount)}</TableCell>
+                      <TableCell className="text-right font-mono font-bold">{formatCurrency(data.totals.total)}</TableCell>
+                    </TableRow>
+                  </TableFooter>
+                )}
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

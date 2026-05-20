@@ -166,7 +166,7 @@ export function DashboardPage() {
               <FileText className="h-3.5 w-3.5" /> Non-GST
             </button>
             <button
-              onClick={() => navigate('/bills/new-gst')}
+              onClick={() => navigate('/bills/new')}
               className="flex items-center gap-1.5 h-8 px-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-colors shadow-sm"
             >
               <Plus className="h-3.5 w-3.5" /> New Bill

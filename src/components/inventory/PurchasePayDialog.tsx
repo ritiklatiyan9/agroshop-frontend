@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
+import { useActionNotify } from '@/hooks/useActionNotify';
 import type { Purchase } from '@/types';
 
 interface Props {
@@ -31,6 +32,7 @@ interface Props {
 
 export function PurchasePayDialog({ purchase, open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
+  const { notify } = useActionNotify();
   const balance = purchase
     ? Math.max(0, Number(purchase.total_amount) - Number(purchase.paid_amount))
     : 0;
@@ -56,6 +58,7 @@ export function PurchasePayDialog({ purchase, open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       toast.success('Payment recorded');
+      notify('Purchase Payment', `₹${Number(amount).toFixed(2)} paid to ${purchase?.party?.name ?? 'supplier'}`);
       queryClient.invalidateQueries({ queryKey: ['purchases'] });
       queryClient.invalidateQueries({ queryKey: ['purchase', purchase?.id] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });

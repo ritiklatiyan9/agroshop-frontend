@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAllProducts } from '@/hooks/useProducts';
+import { useActionNotify } from '@/hooks/useActionNotify';
 
 interface Props {
   open: boolean;
@@ -31,6 +32,7 @@ interface Props {
 
 export function ManualAdjustmentDialog({ open, onOpenChange, preselectProductId }: Props) {
   const queryClient = useQueryClient();
+  const { notify } = useActionNotify();
   const { data: products = [] } = useAllProducts();
   const [productId, setProductId] = useState<string>(preselectProductId || '');
   const [type, setType] = useState<'in' | 'out'>('in');
@@ -50,6 +52,8 @@ export function ManualAdjustmentDialog({ open, onOpenChange, preselectProductId 
     },
     onSuccess: () => {
       toast.success('Stock adjusted');
+      const product = products.find((p) => p.id === productId);
+      notify('Stock Adjusted', `${product?.name ?? 'Product'} stock ${type === 'in' ? 'added' : 'removed'}: ${quantity} ${product?.unit ?? ''}`);
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock-ledger'] });

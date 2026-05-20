@@ -1,5 +1,28 @@
 export type Role = 'owner' | 'supervisor';
 
+export type ModuleKey =
+  | 'products'
+  | 'categories'
+  | 'bills_gst'
+  | 'bills_nongst'
+  | 'bills_history'
+  | 'purchases'
+  | 'inventory'
+  | 'parties'
+  | 'outstanding'
+  | 'reports_sales'
+  | 'reports_purchases'
+  | 'reports_outstanding'
+  | 'reports_gst'
+  | 'reports_stock';
+
+export interface ModulePermission {
+  module: ModuleKey;
+  visible: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+}
+
 export type ThermalSize = '58mm' | '80mm';
 
 export interface User {

@@ -16,16 +16,18 @@ import {
   Settings,
   Database,
   UserCog,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
-import type { Role } from '@/types';
+import type { Role, ModuleKey } from '@/types';
 
 interface NavItem {
   label: string;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   roles?: Role[];
+  module?: ModuleKey;
 }
 
 interface NavGroup {
@@ -41,41 +43,42 @@ const groups: NavGroup[] = [
   {
     label: 'Catalogue',
     items: [
-      { label: 'Products', to: '/products', icon: Package },
-      { label: 'Categories', to: '/categories', icon: Tags },
+      { label: 'Products', to: '/products', icon: Package, module: 'products' },
+      { label: 'Categories', to: '/categories', icon: Tags, module: 'categories' },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { label: 'New Bill (GST)', to: '/bills/new-gst', icon: Receipt },
-      { label: 'New Bill (Non-GST)', to: '/bills/new', icon: FileText },
-      { label: 'Bill History', to: '/bills', icon: History },
-      { label: 'Stock IN (Purchase)', to: '/purchases', icon: Truck },
-      { label: 'Inventory', to: '/inventory', icon: Warehouse },
+      { label: 'New Bill (GST)', to: '/bills/new-gst', icon: Receipt, module: 'bills_gst' },
+      { label: 'New Bill (Non-GST)', to: '/bills/new', icon: FileText, module: 'bills_nongst' },
+      { label: 'Bill History', to: '/bills', icon: History, module: 'bills_history' },
+      { label: 'Stock IN (Purchase)', to: '/purchases', icon: Truck, module: 'purchases' },
+      { label: 'Inventory', to: '/inventory', icon: Warehouse, module: 'inventory' },
     ],
   },
   {
     label: 'Accounts',
     items: [
-      { label: 'Parties', to: '/parties', icon: Users },
-      { label: 'Outstanding', to: '/outstanding', icon: Wallet },
+      { label: 'Parties', to: '/parties', icon: Users, module: 'parties' },
+      { label: 'Outstanding', to: '/outstanding', icon: Wallet, module: 'outstanding' },
     ],
   },
   {
     label: 'Reports',
     items: [
-      { label: 'Sales Report', to: '/reports/sales', icon: BarChart3 },
-      { label: 'Purchase Report', to: '/reports/purchases', icon: BarChart3 },
-      { label: 'Outstanding Report', to: '/reports/outstanding', icon: Wallet },
-      { label: 'GST Report', to: '/reports/gst', icon: FileSpreadsheet },
-      { label: 'Stock Report', to: '/reports/stock', icon: PackageSearch },
+      { label: 'Sales Report', to: '/reports/sales', icon: BarChart3, module: 'reports_sales' },
+      { label: 'Purchase Report', to: '/reports/purchases', icon: BarChart3, module: 'reports_purchases' },
+      { label: 'Outstanding Report', to: '/reports/outstanding', icon: Wallet, module: 'reports_outstanding' },
+      { label: 'GST Report', to: '/reports/gst', icon: FileSpreadsheet, module: 'reports_gst' },
+      { label: 'Stock Report', to: '/reports/stock', icon: PackageSearch, module: 'reports_stock' },
     ],
   },
   {
     label: 'Administration',
     items: [
       { label: 'Supervisors', to: '/admin/supervisors', icon: UserCog, roles: ['owner'] },
+      { label: 'Permissions', to: '/admin/permissions', icon: Shield, roles: ['owner'] },
       { label: 'Shop Profile', to: '/settings/shop', icon: Settings, roles: ['owner'] },
       { label: 'Bill Settings', to: '/settings/bill', icon: Receipt, roles: ['owner'] },
       { label: 'Backup', to: '/settings/backup', icon: Database, roles: ['owner'] },
@@ -85,11 +88,19 @@ const groups: NavGroup[] = [
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const role = useAuthStore((s) => s.user?.role) ?? 'supervisor';
+  const permissions = useAuthStore((s) => s.permissions);
 
   const visibleGroups = groups
     .map((g) => ({
       ...g,
-      items: g.items.filter((i) => !i.roles || i.roles.includes(role)),
+      items: g.items.filter((item) => {
+        if (item.roles && !item.roles.includes(role)) return false;
+        if (role === 'supervisor' && item.module) {
+          const perm = permissions?.find((p) => p.module === item.module);
+          return perm?.visible === true;
+        }
+        return true;
+      }),
     }))
     .filter((g) => g.items.length > 0);
 

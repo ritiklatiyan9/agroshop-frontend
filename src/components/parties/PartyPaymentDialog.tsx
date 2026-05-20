@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { LedgerPaymentMode } from '@/types';
+import { useActionNotify } from '@/hooks/useActionNotify';
 
 interface Props {
   partyId: string | null;
@@ -32,6 +33,7 @@ interface Props {
 
 export function PartyPaymentDialog({ partyId, partyName, open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
+  const { notify } = useActionNotify();
   const [amount, setAmount] = useState('');
   const [mode, setMode] = useState<LedgerPaymentMode>('cash');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -51,6 +53,7 @@ export function PartyPaymentDialog({ partyId, partyName, open, onOpenChange }: P
     },
     onSuccess: () => {
       toast.success('Payment recorded');
+      notify('Payment Recorded', `₹${Number(amount).toFixed(2)} received from ${partyName ?? 'party'}`);
       queryClient.invalidateQueries({ queryKey: ['parties'] });
       queryClient.invalidateQueries({ queryKey: ['party-ledger', partyId] });
       queryClient.invalidateQueries({ queryKey: ['report-outstanding'] });

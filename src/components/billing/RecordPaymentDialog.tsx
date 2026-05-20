@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
+import { useActionNotify } from '@/hooks/useActionNotify';
 import type { BillRow, LedgerPaymentMode } from '@/types';
 
 interface Props {
@@ -32,6 +33,7 @@ interface Props {
 
 export function RecordPaymentDialog({ bill, open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
+  const { notify } = useActionNotify();
   const due = bill ? Number(bill.grand_total) - Number(bill.paid_amount) : 0;
 
   const [amount, setAmount] = useState('');
@@ -53,6 +55,7 @@ export function RecordPaymentDialog({ bill, open, onOpenChange }: Props) {
     },
     onSuccess: () => {
       toast.success('Payment recorded');
+      notify('Payment Received', `₹${Number(amount).toFixed(2)} received for bill ${bill?.bill_number ?? ''}`);
       queryClient.invalidateQueries({ queryKey: ['bills'] });
       queryClient.invalidateQueries({ queryKey: ['bill', bill?.id] });
       queryClient.invalidateQueries({ queryKey: ['outstanding'] });

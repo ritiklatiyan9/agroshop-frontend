@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ImagePlus, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { useActionNotify } from '@/hooks/useActionNotify';
 import { api } from '@/lib/axios';
 import {
   Dialog,
@@ -52,6 +53,7 @@ function newRow(): LineItem {
 
 export function NewPurchaseDialog({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
+  const { notify } = useActionNotify();
   const { data: suppliers = [] } = useSuppliers();
   const { data: products = [] } = useAllProducts();
 
@@ -148,7 +150,9 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
       return api.post('/purchases', payload);
     },
     onSuccess: () => {
+      const supplier = suppliers.find((s) => s.id === partyId);
       toast.success('Purchase recorded');
+      notify('Purchase Recorded', `Stock IN from ${supplier?.name ?? 'supplier'} recorded successfully`);
       queryClient.invalidateQueries({ queryKey: ['purchases'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });

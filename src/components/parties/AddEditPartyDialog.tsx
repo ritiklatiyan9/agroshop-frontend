@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PartyTypeSelect } from '@/components/parties/PartyTypeSelect';
+import { useActionNotify } from '@/hooks/useActionNotify';
 import type { Party } from '@/types';
 
 const schema = z.object({
@@ -39,6 +40,7 @@ interface Props {
 
 export function AddEditPartyDialog({ party, open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
+  const { notify } = useActionNotify();
 
   const form = useForm<FormInput>({
     resolver: zodResolver(schema),
@@ -87,8 +89,9 @@ export function AddEditPartyDialog({ party, open, onOpenChange }: Props) {
       if (party) return api.put(`/parties/${party.id}`, payload);
       return api.post('/parties', payload);
     },
-    onSuccess: () => {
+    onSuccess: (_data, values) => {
       toast.success(party ? 'Party updated' : 'Party created');
+      notify(party ? 'Party Updated' : 'Party Added', `${values.name} has been ${party ? 'updated' : 'added'} successfully`);
       queryClient.invalidateQueries({ queryKey: ['parties'] });
       onOpenChange(false);
     },

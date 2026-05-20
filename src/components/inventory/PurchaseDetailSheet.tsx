@@ -34,8 +34,8 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-        <SheetHeader className="flex flex-row items-center justify-between pr-8">
+      <SheetContent className="w-full sm:max-w-xl flex flex-col p-0 gap-0" style={{ maxHeight: '100dvh' }}>
+        <SheetHeader className="px-4 pt-5 pb-3 border-b border-slate-100 shrink-0 flex flex-row items-center justify-between pr-8">
           <SheetTitle>
             Purchase {data?.invoice_number ? `· ${data.invoice_number}` : ''}
           </SheetTitle>
@@ -52,6 +52,7 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
           )}
         </SheetHeader>
 
+        <div className="flex-1 overflow-y-auto px-4 py-4">
         {isLoading && <Skeleton className="h-64 w-full" />}
 
         {data && (
@@ -91,8 +92,8 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
 
             <section>
               <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Items</div>
-              <div className="border border-slate-100 rounded-lg overflow-hidden">
-                <table className="w-full">
+              <div className="overflow-x-auto border border-slate-100 rounded-lg">
+                <table className="w-full min-w-[360px]">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="text-left p-2">Product</th>
@@ -190,6 +191,7 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
             })()}
           </div>
         )}
+        </div>
       </SheetContent>
     </Sheet>
   );
