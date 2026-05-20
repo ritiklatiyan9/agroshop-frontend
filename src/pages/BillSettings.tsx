@@ -31,6 +31,7 @@ interface BillSettingsForm {
   thermal_paper_size: ThermalSize;
   auto_print_after_save: boolean;
   auto_generate_pdf: boolean;
+  gst_before_discount: boolean;
 }
 
 const EMPTY: BillSettingsForm = {
@@ -45,6 +46,7 @@ const EMPTY: BillSettingsForm = {
   thermal_paper_size: '80mm',
   auto_print_after_save: false,
   auto_generate_pdf: false,
+  gst_before_discount: false,
 };
 
 export function BillSettingsPage() {
@@ -65,6 +67,7 @@ export function BillSettingsPage() {
       thermal_paper_size: user.thermal_paper_size ?? '80mm',
       auto_print_after_save: user.auto_print_after_save ?? false,
       auto_generate_pdf: user.auto_generate_pdf ?? false,
+      gst_before_discount: user.gst_before_discount ?? false,
     });
   }, [user]);
 
@@ -154,6 +157,14 @@ export function BillSettingsPage() {
               </SelectContent>
             </Select>
           </Field>
+          <div className="mt-3">
+            <ToggleRow
+              label="Apply GST before discount"
+              description="When enabled, GST is calculated on the discounted price (discount applied first, then GST). By default, GST is on the full amount and discount is deducted from the total."
+              checked={form.gst_before_discount}
+              onChange={(v) => update('gst_before_discount', v)}
+            />
+          </div>
         </Section>
 
         <Section

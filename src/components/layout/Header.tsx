@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/axios';
+import { NotificationBell } from './NotificationBell';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -51,10 +52,12 @@ export function Header({ onMenuClick }: HeaderProps) {
         >
           <Menu className="h-5 w-5" />
         </Button>
-     
       </div>
 
-      <DropdownMenu>
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+
+        <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-2 rounded-full p-1 hover:bg-slate-50 transition-colors">
             <Avatar className="h-9 w-9">
@@ -94,6 +97,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }

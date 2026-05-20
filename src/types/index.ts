@@ -34,6 +34,7 @@ export interface User {
   thermal_paper_size: ThermalSize;
   auto_print_after_save: boolean;
   auto_generate_pdf: boolean;
+  gst_before_discount: boolean;
   is_active: boolean;
   created_at: string;
 }
@@ -82,7 +83,7 @@ export interface Product {
 export interface Party {
   id: string;
   name: string;
-  type: 'customer' | 'supplier' | 'both';
+  type: string;
   mobile: string | null;
   address: string | null;
   gstin: string | null;
@@ -149,6 +150,7 @@ export interface Purchase {
   payment_status: 'paid' | 'unpaid' | 'partial';
   payment_mode: 'cash' | 'upi' | 'cheque' | 'bank_transfer';
   notes: string | null;
+  bill_image_url?: string | null;
   item_count?: number;
   items?: Array<{
     id: string;

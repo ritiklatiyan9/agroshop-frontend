@@ -4,16 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowDownRight,
   ArrowUpRight,
-  ChevronRight,
   FileText,
-  IndianRupee,
+  Package,
   Package2,
   Plus,
   Receipt,
+  ShoppingCart,
   TrendingUp,
   Users,
   Wallet,
-  Warehouse,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 import {
   Area,
@@ -25,51 +26,81 @@ import {
   YAxis,
 } from 'recharts';
 import { api } from '@/lib/axios';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthStore } from '@/store/authStore';
 import { cn, formatCurrency } from '@/lib/utils';
 
-interface Dashboard {
+interface DashboardData {
   today: { sales_amount: number; bill_count: number; collection_amount: number };
   this_month: { sales_amount: number; bill_count: number; collection_amount: number };
   outstanding_total: number;
   low_stock_count: number;
   expiring_soon_count: number;
-  sales_last_7_days: { date: string; amount: number; bill_count: number }[];
   top_products_this_month: { product_id: string; name: string; qty_sold: number; revenue: number }[];
   recent_bills: {
-    id: string;
-    bill_number: string;
-    bill_date: string;
-    grand_total: string;
-    paid_amount: string;
-    payment_status: 'paid' | 'unpaid' | 'partial';
-    party_name: string;
+    id: string; bill_number: string; bill_date: string;
+    grand_total: string; paid_amount: string;
+    payment_status: 'paid' | 'unpaid' | 'partial'; party_name: string;
   }[];
 }
 
-const ACCENT = '#10b981';
-
 type Range = '7d' | '30d' | '3m' | '6m' | '1y' | 'all';
 type Bucket = 'day' | 'week' | 'month';
-
 const RANGES: { value: Range; label: string; sub: string }[] = [
-  { value: '7d', label: '7d', sub: 'Last 7 days' },
-  { value: '30d', label: '30d', sub: 'Last 30 days' },
-  { value: '3m', label: '3m', sub: 'Last 3 months' },
-  { value: '6m', label: '6m', sub: 'Last 6 months' },
-  { value: '1y', label: '1y', sub: 'Last 12 months' },
+  { value: '7d', label: '7D', sub: 'Last 7 days' },
+  { value: '30d', label: '30D', sub: 'Last 30 days' },
+  { value: '3m', label: '3M', sub: 'Last 3 months' },
+  { value: '6m', label: '6M', sub: 'Last 6 months' },
+  { value: '1y', label: '1Y', sub: 'Last year' },
   { value: 'all', label: 'All', sub: 'All time' },
 ];
 
 interface TrendResponse {
-  range: Range;
-  bucket: Bucket;
-  from: string;
+  range: Range; bucket: Bucket;
   data: { date: string; amount: number; bill_count: number }[];
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+}
+
+function formatTick(value: string, bucket: Bucket): string {
+  if (!value) return '';
+  if (bucket === 'month') {
+    const [y, m] = value.split('-');
+    return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-IN', { month: 'short' });
+  }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  if (bucket === 'week') return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+  return d.toLocaleDateString('en-IN', { weekday: 'short' });
+}
+
+/* tiny SVG sparkline for stat cards */
+function Spark({ values, color }: { values: number[]; color: string }) {
+  if (values.length < 2) return null;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const W = 80, H = 32;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * W;
+    const y = H - ((v - min) / range) * (H - 6) - 3;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="overflow-visible">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* last dot */}
+      {(() => {
+        const last = values[values.length - 1];
+        const x = W;
+        const y = H - ((last - min) / range) * (H - 6) - 3;
+        return <circle cx={x} cy={y} r="3" fill={color} />;
+      })()}
+    </svg>
+  );
 }
 
 export function DashboardPage() {
@@ -79,24 +110,18 @@ export function DashboardPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['analytics-dashboard'],
-    queryFn: async () => {
-      const res = await api.get<Dashboard>('/analytics/dashboard');
-      return res.data;
-    },
+    queryFn: async () => (await api.get<DashboardData>('/analytics/dashboard')).data,
   });
 
   const { data: trend, isLoading: trendLoading } = useQuery({
     queryKey: ['sales-trend', range],
-    queryFn: async () => {
-      const res = await api.get<TrendResponse>('/analytics/sales-trend', { params: { range } });
-      return res.data;
-    },
+    queryFn: async () => (await api.get<TrendResponse>('/analytics/sales-trend', { params: { range } })).data,
     placeholderData: keepPreviousData,
   });
 
   const trendStats = useMemo(() => {
     const days = trend?.data ?? [];
-    if (days.length < 1) return null;
+    if (!days.length) return null;
     const total = days.reduce((s, d) => s + d.amount, 0);
     const bills = days.reduce((s, d) => s + d.bill_count, 0);
     const avg = bills > 0 ? total / bills : 0;
@@ -110,501 +135,355 @@ export function DashboardPage() {
     return { total, bills, pct, avg };
   }, [trend?.data]);
 
-  const rangeSub = RANGES.find((r) => r.value === range)?.sub ?? '';
-  const bucket: Bucket = trend?.bucket ?? 'day';
-
-  const topProductsMax = useMemo(() => {
+  const topMax = useMemo(() => {
     const arr = data?.top_products_this_month ?? [];
     return arr.length ? Math.max(...arr.map((p) => p.revenue), 1) : 1;
   }, [data?.top_products_this_month]);
 
+  const sparkData = (trend?.data ?? []).map((d) => d.amount);
+  const bucket: Bucket = trend?.bucket ?? 'day';
+  const rangeSub = RANGES.find((r) => r.value === range)?.sub ?? '';
+
   return (
     <div className="h-full overflow-y-auto bg-slate-50">
-      <div className="max-w-[1500px] mx-auto p-3 sm:p-6 space-y-3 sm:space-y-4">
-        <header className="flex flex-wrap items-end justify-between gap-3">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 space-y-4">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.14em]">
-              {new Date().toLocaleDateString('en-IN', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
+              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
-            <h1 className="mt-0.5 text-xl font-bold text-slate-900">
-              {greeting()}
-              {user?.name ? `, ${user.name}` : ''}
+            <h1 className="text-xl font-bold text-slate-800 mt-0.5">
+              Good {greeting()}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
             </h1>
           </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate('/bills/new')}>
-              <Plus className="mr-1.5 h-4 w-4" /> Quick bill
-            </Button>
-            <Button size="sm" onClick={() => navigate('/bills/new-gst')}>
-              <Plus className="mr-1.5 h-4 w-4" /> New GST bill
-            </Button>
-          </div>
-        </header>
-
-        {/* Mobile quick actions */}
-        <div className="grid grid-cols-4 gap-2 sm:hidden">
-          {[
-            { icon: Receipt, label: 'GST Bill', to: '/bills/new-gst', bg: 'bg-emerald-50', iconCls: 'text-emerald-600', textCls: 'text-emerald-700' },
-            { icon: FileText, label: 'Non-GST', to: '/bills/new', bg: 'bg-sky-50', iconCls: 'text-sky-600', textCls: 'text-sky-700' },
-            { icon: Warehouse, label: 'Inventory', to: '/inventory', bg: 'bg-violet-50', iconCls: 'text-violet-600', textCls: 'text-violet-700' },
-            { icon: Users, label: 'Parties', to: '/parties', bg: 'bg-amber-50', iconCls: 'text-amber-600', textCls: 'text-amber-700' },
-          ].map(({ icon: Icon, label, to, bg, iconCls, textCls }) => (
+          <div className="flex gap-2">
             <button
-              key={to}
-              type="button"
-              onClick={() => navigate(to)}
-              className={`flex flex-col items-center gap-1.5 rounded-2xl ${bg} px-1.5 py-3 transition-opacity active:opacity-70`}
+              onClick={() => navigate('/bills/new')}
+              className="hidden sm:flex items-center gap-1.5 h-8 px-3.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
             >
-              <Icon className={`h-6 w-6 ${iconCls}`} />
-              <span className={`text-[10px] font-semibold leading-tight text-center ${textCls}`}>{label}</span>
+              <FileText className="h-3.5 w-3.5" /> Non-GST
             </button>
-          ))}
+            <button
+              onClick={() => navigate('/bills/new-gst')}
+              className="flex items-center gap-1.5 h-8 px-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-colors shadow-sm"
+            >
+              <Plus className="h-3.5 w-3.5" /> New Bill
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
-          <Card className="lg:col-span-4 bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 text-white border-0 overflow-hidden relative">
-            <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-emerald-400/20 blur-3xl" />
-            <CardContent className="relative p-4 sm:p-5 flex flex-col justify-between min-h-[150px] sm:min-h-[180px] h-full">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
-                  Today's Sales
-                </span>
-                <div className="h-8 w-8 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center">
-                  <IndianRupee className="h-4 w-4 text-emerald-300" />
-                </div>
-              </div>
+        {/* ── ROW 1: KPI CARDS ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
+          {/* Today Revenue */}
+          <div
+            onClick={() => navigate('/bills')}
+            className="group cursor-pointer col-span-2 sm:col-span-1 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 hover:shadow-md transition-all"
+          >
+            <div className="flex items-start justify-between">
               <div>
-                <div className="text-2xl sm:text-3xl font-bold tabular-nums tracking-tight">
-                  {isLoading ? '…' : formatCurrency(data?.today.sales_amount ?? 0)}
-                </div>
-                <div className="flex items-center gap-2 text-[11px] text-slate-300 mt-1.5">
-                  <span className="flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    {data?.today.bill_count ?? 0} bills
-                  </span>
-                  <span className="h-3 w-px bg-slate-700" />
-                  <span>
-                    Collected{' '}
-                    <span className="font-semibold text-white">
-                      {formatCurrency(data?.today.collection_amount ?? 0)}
-                    </span>
-                  </span>
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Today's Sales</p>
+                <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-bold text-emerald-600">Live</span>
                 </div>
               </div>
+              <Spark values={sparkData.length ? sparkData : [0, 1, 0.5, 1.2, 0.8, 1.5, 1]} color="#10b981" />
+            </div>
+            {isLoading
+              ? <Skeleton className="h-8 w-28 rounded-lg mt-3" />
+              : <p className="text-2xl font-black text-slate-900 tabular-nums mt-3">{formatCurrency(data?.today.sales_amount ?? 0)}</p>}
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[11px] text-slate-400">{data?.today.bill_count ?? 0} bills</span>
+              <span className="text-slate-200">·</span>
+              <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-0.5">
+                <Wallet className="h-3 w-3" />{formatCurrency(data?.today.collection_amount ?? 0)}
+              </span>
+            </div>
+          </div>
 
-              <button
-                type="button"
-                onClick={() => navigate('/bills')}
-                className="flex items-center justify-between text-[11px] text-slate-300 hover:text-white transition-colors pt-2 border-t border-white/10"
-              >
-                <span>View all bills</span>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-8">
-            <CardContent className="p-5 h-full flex flex-col">
-              <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Sales activity</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{rangeSub}</p>
-                </div>
-                <div className="flex items-center gap-3 flex-wrap justify-end">
-                  <div className="flex items-center gap-0.5 bg-slate-100 rounded-md p-0.5">
-                    {RANGES.map((r) => (
-                      <button
-                        key={r.value}
-                        type="button"
-                        onClick={() => setRange(r.value)}
-                        className={cn(
-                          'h-6 px-2 text-[11px] font-semibold rounded transition-colors',
-                          range === r.value
-                            ? 'bg-white text-slate-900 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-900',
-                        )}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="hidden sm:flex items-center gap-4 text-right">
-                    <Stat
-                      label="Revenue"
-                      value={trendStats ? formatCurrency(trendStats.total) : '—'}
-                    />
-                    <Stat
-                      label="Bills"
-                      value={trendStats ? String(trendStats.bills) : '—'}
-                    />
-                    <Stat
-                      label="Avg / bill"
-                      value={
-                        trendStats && trendStats.bills > 0
-                          ? formatCurrency(trendStats.avg)
-                          : '—'
-                      }
-                    />
-                    {trendStats && trend && trend.data.length >= 2 && (
-                      <TrendBadge pct={trendStats.pct} />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 min-h-[160px]" style={{ height: 180 }}>
-                {trendLoading && !trend ? (
-                  <Skeleton className="h-full w-full" />
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={trend?.data ?? []}
-                      margin={{ top: 5, right: 8, left: 0, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id="dashAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={ACCENT} stopOpacity={0.25} />
-                          <stop offset="100%" stopColor={ACCENT} stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fontSize: 11, fill: '#94a3b8' }}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(d) => formatTick(d, bucket)}
-                        minTickGap={20}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 11, fill: '#94a3b8' }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={44}
-                        tickFormatter={(v) =>
-                          v >= 1000 ? `${Math.round(v / 1000)}k` : String(v)
-                        }
-                      />
-                      <Tooltip content={<CurrencyTooltip />} cursor={{ fill: '#f8fafc' }} />
-                      <Area
-                        type="monotone"
-                        dataKey="amount"
-                        stroke={ACCENT}
-                        strokeWidth={2}
-                        fill="url(#dashAreaGrad)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Metric
-            label="This month"
-            value={isLoading ? '…' : formatCurrency(data?.this_month.sales_amount ?? 0)}
-            sub={`${data?.this_month.bill_count ?? 0} bills · ${formatCurrency(data?.this_month.collection_amount ?? 0)} collected`}
+          {/* This Month */}
+          <StatCard
+            label="This Month"
+            value={isLoading ? null : formatCurrency(data?.this_month.sales_amount ?? 0)}
+            sub={`${data?.this_month.bill_count ?? 0} bills`}
             icon={TrendingUp}
+            accent="sky"
             onClick={() => navigate('/reports/sales')}
           />
-          <Metric
+
+          {/* Outstanding */}
+          <StatCard
             label="Outstanding"
-            value={isLoading ? '…' : formatCurrency(data?.outstanding_total ?? 0)}
-            sub={Number(data?.outstanding_total) > 0 ? 'Credit bills unpaid' : 'No dues 🎉'}
-            icon={Wallet}
-            valueClassName={
-              Number(data?.outstanding_total) > 0 ? 'text-amber-700' : 'text-slate-900'
-            }
+            value={isLoading ? null : formatCurrency(data?.outstanding_total ?? 0)}
+            sub={Number(data?.outstanding_total) > 0 ? 'Dues pending' : 'All cleared ✓'}
+            icon={Clock}
+            accent={Number(data?.outstanding_total) > 0 ? 'amber' : 'emerald'}
             onClick={() => navigate('/outstanding')}
           />
-          <Metric
-            label="Low stock"
-            value={isLoading ? '…' : String(data?.low_stock_count ?? 0)}
-            sub="Below min level"
-            icon={Package2}
-            valueClassName={Number(data?.low_stock_count) > 0 ? 'text-rose-700' : 'text-slate-900'}
-            onClick={() => navigate('/reports/stock')}
-          />
-          <Metric
-            label="Expiring soon"
-            value={isLoading ? '…' : String(data?.expiring_soon_count ?? 0)}
-            sub="Within 60 days"
-            icon={Package2}
-            valueClassName={
-              Number(data?.expiring_soon_count) > 0 ? 'text-amber-700' : 'text-slate-900'
-            }
-            onClick={() => navigate('/reports/stock')}
+
+          {/* Alerts */}
+          <StatCard
+            label="Alerts"
+            value={isLoading ? null : String((data?.low_stock_count ?? 0) + (data?.expiring_soon_count ?? 0))}
+            sub={`${data?.low_stock_count ?? 0} low · ${data?.expiring_soon_count ?? 0} expiring`}
+            icon={AlertCircle}
+            accent={((data?.low_stock_count ?? 0) + (data?.expiring_soon_count ?? 0)) > 0 ? 'rose' : 'slate'}
+            onClick={() => navigate('/inventory')}
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
-          <Card className="lg:col-span-7">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Recent bills</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Latest sales</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/bills')}
-                  className="text-xs font-semibold text-emerald-700 hover:underline inline-flex items-center gap-1"
-                >
-                  See all <ChevronRight className="h-3 w-3" />
-                </button>
+        {/* ── ROW 2: CHART ── */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-4">
+              <div>
+                <p className="text-sm font-bold text-slate-800">Sales Overview</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{rangeSub}</p>
               </div>
-              {isLoading ? (
-                <Skeleton className="h-40 w-full" />
-              ) : data?.recent_bills.length === 0 ? (
-                <EmptyBlock label="No bills yet. Create your first one →" />
-              ) : (
-                <ul className="divide-y divide-slate-100">
-                  {data?.recent_bills.slice(0, 5).map((b) => (
-                    <li
-                      key={b.id}
-                      role="button"
-                      onClick={() => navigate('/bills')}
-                      className="flex items-center justify-between gap-3 py-2.5 cursor-pointer hover:bg-slate-50 -mx-2 px-2 rounded-md transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="h-8 w-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 text-[11px] font-semibold uppercase">
-                          {b.party_name.slice(0, 2)}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-slate-900 truncate">
-                            {b.party_name}
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-mono">
-                            {b.bill_number} ·{' '}
-                            {new Date(b.bill_date).toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge
-                          variant={
-                            b.payment_status === 'paid'
-                              ? 'success'
-                              : b.payment_status === 'unpaid'
-                              ? 'danger'
-                              : 'warning'
-                          }
-                        >
-                          {b.payment_status}
-                        </Badge>
-                        <span className="text-sm font-semibold tabular-nums text-slate-900 w-20 text-right">
-                          {formatCurrency(b.grand_total)}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+              {trendStats && (
+                <div className="hidden sm:flex items-center gap-4 pl-4 border-l border-slate-100">
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Revenue</p>
+                    <p className="text-sm font-bold text-slate-800 tabular-nums">{formatCurrency(trendStats.total)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Avg/Bill</p>
+                    <p className="text-sm font-bold text-slate-800 tabular-nums">{trendStats.bills > 0 ? formatCurrency(trendStats.avg) : '—'}</p>
+                  </div>
+                  {trend && trend.data.length >= 2 && (
+                    <div className={cn(
+                      'flex items-center gap-0.5 text-xs font-black px-2 py-0.5 rounded-lg',
+                      trendStats.pct >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600',
+                    )}>
+                      {trendStats.pct >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+                      {trendStats.pct >= 0 ? '+' : ''}{trendStats.pct}%
+                    </div>
+                  )}
+                </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card className="lg:col-span-5">
-            <CardContent className="p-5">
+            {/* Range pills */}
+            <div className="flex items-center gap-0.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+              {RANGES.map((r) => (
+                <button key={r.value} type="button" onClick={() => setRange(r.value)}
+                  className={cn(
+                    'h-6 px-2.5 text-[11px] font-bold rounded-lg transition-all',
+                    range === r.value ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-700',
+                  )}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-44 sm:h-52">
+            {trendLoading && !trend ? (
+              <Skeleton className="h-full w-full rounded-xl" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trend?.data ?? []} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false}
+                    tickFormatter={(d) => formatTick(d, bucket)} minTickGap={24} dy={6} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={40}
+                    tickFormatter={(v) => v >= 1000 ? `${+(v / 1000).toFixed(1)}k` : String(v)} dx={-4} />
+                  <Tooltip content={<LightTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} />
+                  <Area type="monotone" dataKey="amount" stroke="#10b981" strokeWidth={2} fill="url(#g1)" dot={false}
+                    activeDot={{ r: 4, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* ── ROW 3: BILLS + PRODUCTS + ACTIONS ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+
+          {/* Recent Bills */}
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm font-bold text-slate-800">Recent Bills</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Latest transactions</p>
+              </div>
+              <button onClick={() => navigate('/bills')}
+                className="text-[11px] font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg transition-colors">
+                View all →
+              </button>
+            </div>
+
+            {isLoading ? (
+              <div className="space-y-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}</div>
+            ) : (data?.recent_bills ?? []).length === 0 ? (
+              <Empty label="No bills yet." icon={Receipt} />
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {data?.recent_bills.slice(0, 6).map((b) => (
+                  <div key={b.id} role="button" onClick={() => navigate('/bills')}
+                    className="group flex items-center justify-between gap-3 py-2.5 hover:bg-slate-50 -mx-2 px-2 rounded-xl cursor-pointer transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 text-[10px] font-black text-slate-500 uppercase group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
+                        {b.party_name.slice(0, 2)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-700 truncate">{b.party_name}</p>
+                        <p className="text-[11px] text-slate-400">
+                          <span className="font-mono">{b.bill_number}</span>
+                          <span className="mx-1 text-slate-200">·</span>
+                          {new Date(b.bill_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-md',
+                        b.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' :
+                        b.payment_status === 'unpaid' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600')}>
+                        {b.payment_status}
+                      </span>
+                      <span className="text-sm font-black text-slate-800 tabular-nums">{formatCurrency(b.grand_total)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right: Top Products + Quick Actions */}
+          <div className="lg:col-span-5 space-y-3">
+
+            {/* Top Products */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Top products</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">By revenue, this month</p>
+                  <p className="text-sm font-bold text-slate-800">Top Products</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Revenue this month</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/products')}
-                  className="text-xs font-semibold text-emerald-700 hover:underline inline-flex items-center gap-1"
-                >
-                  All <ChevronRight className="h-3 w-3" />
+                <button onClick={() => navigate('/products')}
+                  className="text-[11px] font-bold text-slate-400 hover:text-slate-700 transition-colors">
+                  All →
                 </button>
               </div>
+
               {isLoading ? (
-                <Skeleton className="h-40 w-full" />
+                <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-8 w-full rounded-lg" />)}</div>
               ) : (data?.top_products_this_month ?? []).length === 0 ? (
-                <EmptyBlock label="No sales this month yet." />
+                <Empty label="No sales this month." icon={Package2} />
               ) : (
-                <ul className="space-y-3">
+                <div className="space-y-3">
                   {data?.top_products_this_month.slice(0, 5).map((p, i) => {
-                    const pct = Math.max(4, Math.round((p.revenue / topProductsMax) * 100));
+                    const pct = Math.max(6, Math.round((p.revenue / topMax) * 100));
+                    const bars = ['bg-emerald-400', 'bg-sky-400', 'bg-violet-400', 'bg-amber-400', 'bg-rose-400'];
+                    const nums = ['text-emerald-500', 'text-sky-500', 'text-violet-500', 'text-amber-500', 'text-rose-500'];
                     return (
-                      <li key={p.product_id}>
-                        <div className="flex items-center justify-between gap-2 mb-1">
+                      <div key={p.product_id}>
+                        <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className="h-5 w-5 rounded-md bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
-                              {i + 1}
-                            </div>
-                            <span className="text-sm font-medium text-slate-900 truncate">
-                              {p.name}
-                            </span>
+                            <span className={cn('text-[11px] font-black w-4', nums[i])}>#{i+1}</span>
+                            <span className="text-xs font-semibold text-slate-600 truncate">{p.name}</span>
                           </div>
-                          <span className="text-sm tabular-nums font-semibold text-slate-900 shrink-0">
-                            {formatCurrency(p.revenue)}
-                          </span>
+                          <span className="text-xs font-black text-slate-800 tabular-nums ml-2">{formatCurrency(p.revenue)}</span>
                         </div>
-                        <div className="flex items-center gap-2 pl-7">
-                          <div className="h-1 bg-slate-100 rounded-full flex-1 overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-emerald-500"
-                              style={{ width: `${pct}%` }}
-                            />
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={cn('h-full rounded-full', bars[i])} style={{ width: `${pct}%` }} />
                           </div>
-                          <span className="text-[10px] text-slate-500 tabular-nums w-12 text-right">
-                            {p.qty_sold.toFixed(0)} sold
-                          </span>
+                          <span className="text-[10px] text-slate-400 w-12 text-right shrink-0">{p.qty_sold.toFixed(0)} sold</span>
                         </div>
-                      </li>
+                      </div>
                     );
                   })}
-                </ul>
+                </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                { label: 'Purchases', icon: ShoppingCart, bg: 'bg-indigo-50 hover:bg-indigo-100', text: 'text-indigo-600', path: '/purchases' },
+                { label: 'Parties', icon: Users, bg: 'bg-violet-50 hover:bg-violet-100', text: 'text-violet-600', path: '/parties' },
+                { label: 'Inventory', icon: Package, bg: 'bg-teal-50 hover:bg-teal-100', text: 'text-teal-600', path: '/inventory' },
+                { label: 'Reports', icon: TrendingUp, bg: 'bg-sky-50 hover:bg-sky-100', text: 'text-sky-600', path: '/reports/sales' },
+              ].map((a) => (
+                <button key={a.path} onClick={() => navigate(a.path)}
+                  className={cn('flex items-center gap-2.5 p-3 rounded-2xl border border-transparent text-left transition-all hover:shadow-sm hover:-translate-y-0.5 active:scale-95', a.bg)}>
+                  <div className={cn('h-7 w-7 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0', a.text)}>
+                    <a.icon className="h-3.5 w-3.5" />
+                  </div>
+                  <span className={cn('text-xs font-bold', a.text)}>{a.label}</span>
+                </button>
+              ))}
+            </div>
+
+          </div>
         </div>
+
       </div>
     </div>
   );
 }
 
-function formatTick(value: string, bucket: Bucket): string {
-  if (!value) return '';
-  if (bucket === 'month') {
-    const [y, m] = value.split('-');
-    const d = new Date(Number(y), Number(m) - 1, 1);
-    return d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
-  }
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  if (bucket === 'week') {
-    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-  }
-  return d.toLocaleDateString('en-IN', { weekday: 'short' });
-}
+/* ── helpers ── */
 
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function Metric({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  valueClassName,
-  onClick,
+function StatCard({
+  label, value, sub, icon: Icon, accent = 'slate', onClick,
 }: {
-  label: string;
-  value: string;
-  sub: string;
+  label: string; value: string | null; sub: string;
   icon: React.ComponentType<{ className?: string }>;
-  valueClassName?: string;
+  accent?: 'emerald' | 'sky' | 'amber' | 'rose' | 'slate';
   onClick?: () => void;
 }) {
-  return (
-    <Card
-      onClick={onClick}
-      className={cn(
-        'transition-shadow',
-        onClick && 'cursor-pointer hover:shadow-md hover:border-slate-300',
-      )}
-    >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500 font-semibold">
-              {label}
-            </div>
-            <div
-              className={cn(
-                'mt-1.5 text-base sm:text-xl font-bold tabular-nums tracking-tight truncate',
-                valueClassName ?? 'text-slate-900',
-              )}
-            >
-              {value}
-            </div>
-            <div className="text-[10px] text-slate-500 mt-0.5 truncate">{sub}</div>
-          </div>
-          <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center shrink-0 ring-1 ring-slate-100">
-            <Icon className="h-4 w-4 text-slate-500" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+  const p = {
+    emerald: { icon: 'bg-emerald-100 text-emerald-600', val: 'text-emerald-700' },
+    sky:     { icon: 'bg-sky-100 text-sky-600',         val: 'text-sky-700' },
+    amber:   { icon: 'bg-amber-100 text-amber-600',     val: 'text-amber-700' },
+    rose:    { icon: 'bg-rose-100 text-rose-600',       val: 'text-rose-700' },
+    slate:   { icon: 'bg-slate-100 text-slate-500',     val: 'text-slate-800' },
+  }[accent];
 
-function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-right">
-      <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-        {label}
+    <div role={onClick ? 'button' : undefined} onClick={onClick}
+      className="group bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col gap-2.5 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all">
+      <div className={cn('h-8 w-8 rounded-xl flex items-center justify-center', p.icon)}>
+        <Icon className="h-4 w-4" />
       </div>
-      <div className="text-sm font-bold tabular-nums text-slate-900 mt-0.5">{value}</div>
+      {value === null
+        ? <Skeleton className="h-7 w-24 rounded-lg" />
+        : <p className={cn('text-xl font-black tabular-nums', p.val)}>{value}</p>}
+      <div>
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+        <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>
+      </div>
     </div>
   );
 }
 
-function TrendBadge({ pct }: { pct: number }) {
-  const positive = pct >= 0;
+function Empty({ label, icon: Icon }: { label: string; icon: React.ComponentType<{ className?: string }> }) {
   return (
-    <div
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-bold',
-        positive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700',
-      )}
-    >
-      {positive ? (
-        <ArrowUpRight className="h-3 w-3" />
-      ) : (
-        <ArrowDownRight className="h-3 w-3" />
-      )}
-      {positive ? '+' : ''}
-      {pct}%
+    <div className="h-24 flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 bg-slate-50">
+      <Icon className="h-5 w-5 text-slate-300" />
+      <span className="text-xs font-medium text-slate-400">{label}</span>
     </div>
   );
 }
 
-function EmptyBlock({ label }: { label: string }) {
-  return (
-    <div className="h-40 flex items-center justify-center text-sm text-slate-400 border border-dashed border-slate-200 rounded-lg">
-      {label}
-    </div>
-  );
-}
-
-function CurrencyTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: Array<{ value: number; name: string }>;
-  label?: string;
+function LightTooltip({ active, payload, label }: {
+  active?: boolean; payload?: Array<{ value: number }>; label?: string;
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm text-xs">
-      {label && <div className="font-semibold text-slate-700 mb-1">{label}</div>}
-      {payload.map((p, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span className="text-slate-500">{p.name}:</span>
-          <span className="tabular-nums font-semibold text-slate-900">
-            {formatCurrency(p.value)}
-          </span>
-        </div>
-      ))}
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-lg text-xs">
+      {label && <p className="text-slate-400 mb-1 text-[10px] uppercase tracking-wide font-semibold">{label}</p>}
+      <p className="font-black text-slate-800 tabular-nums">{formatCurrency(payload[0].value)}</p>
     </div>
   );
 }

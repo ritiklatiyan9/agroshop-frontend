@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import { AlertTriangle, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,6 +55,24 @@ export function StockLedgerSheet({ open, onOpenChange, productId, productName }:
         {data && data.data.length === 0 && (
           <div className="text-center text-sm text-slate-500 py-12">No stock movements yet.</div>
         )}
+
+        {(() => {
+          if (!data || data.data.length === 0) return null;
+          const lastBalance = data.data[data.data.length - 1]?.running_balance ?? 0;
+          const currentStock = Number(data.product.current_stock);
+          if (Math.abs(lastBalance - currentStock) > 0.001) {
+            return (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 mb-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  History balance ({formatNumber(lastBalance, 2)}) doesn't match current stock ({formatNumber(currentStock, 2)}).
+                  Some stock was added before movement tracking — use Manual Adjustment to record it.
+                </span>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         <ul className="space-y-2">
           {data?.data.map((m) => {

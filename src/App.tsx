@@ -24,6 +24,7 @@ import { GstReportPage } from '@/pages/reports/GstReport';
 import { StockReportPage } from '@/pages/reports/StockReport';
 import { PurchaseReportPage } from '@/pages/reports/PurchaseReport';
 import { OutstandingReportPage } from '@/pages/reports/OutstandingReport';
+import { PurchasesPage } from '@/pages/Purchases';
 
 export default function App() {
   return (
@@ -66,7 +67,7 @@ export default function App() {
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
-        <Route path="/purchases" element={<InventoryPage initialTab="purchases" />} />
+        <Route path="/purchases" element={<PurchasesPage />} />
 
         <Route path="/bills" element={<BillHistoryPage />} />
         <Route path="/bills/new-gst" element={<NewBillPage billType="gst" />} />

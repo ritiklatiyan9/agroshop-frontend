@@ -36,6 +36,7 @@ export function calculateBill(
   items: BillItemInput[],
   discount = 0,
   billType: BillType = 'gst',
+  gstBeforeDiscount = false,
 ): BillSummary {
   const calc: CalculatedItem[] = items.map((it) => {
     const taxable = round2((it.quantity || 0) * (it.rate || 0));
@@ -57,10 +58,27 @@ export function calculateBill(
   });
 
   const subtotal = round2(calc.reduce((s, i) => s + i.taxable_amount, 0));
+  const discount_amount = round2(Math.max(0, discount));
+
+  if (gstBeforeDiscount && billType === 'gst') {
+    // Discount applied to base first; GST calculated on discounted amounts proportionally
+    const discountRatio = subtotal > 0 ? Math.min(1, discount_amount / subtotal) : 0;
+    let cgstSum = 0;
+    let sgstSum = 0;
+    for (const it of calc) {
+      const discountedTaxable = it.taxable_amount * (1 - discountRatio);
+      cgstSum += discountedTaxable * (it.cgst_rate / 100);
+      sgstSum += discountedTaxable * (it.sgst_rate / 100);
+    }
+    const total_cgst = round2(cgstSum);
+    const total_sgst = round2(sgstSum);
+    const grand_total = round2(subtotal - discount_amount + total_cgst + total_sgst);
+    return { items: calc, subtotal, total_cgst, total_sgst, discount_amount, grand_total };
+  }
+
+  // Default: GST on full subtotal, discount deducted from total
   const total_cgst = round2(calc.reduce((s, i) => s + i.cgst_amount, 0));
   const total_sgst = round2(calc.reduce((s, i) => s + i.sgst_amount, 0));
-  const discount_amount = round2(Math.max(0, discount));
   const grand_total = round2(subtotal + total_cgst + total_sgst - discount_amount);
-
   return { items: calc, subtotal, total_cgst, total_sgst, discount_amount, grand_total };
 }

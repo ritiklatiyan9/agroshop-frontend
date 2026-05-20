@@ -55,7 +55,7 @@ export function InventoryPage({ initialTab = 'stock' }: Props) {
   const [viewBillId, setViewBillId] = useState<string | null>(null);
 
   return (
-    <div className="h-full flex flex-col p-6 gap-4 overflow-hidden">
+    <div className="h-full flex flex-col p-3 sm:p-6 gap-4 overflow-hidden">
       <div className="flex-shrink-0">
         <PageHeader
           title="Inventory"
@@ -180,13 +180,13 @@ function CurrentStock({
               <TableHeader>
                 <TableRow>
                   <TableHead>Product</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Unit</TableHead>
+                  <TableHead className="hidden md:table-cell">Category</TableHead>
+                  <TableHead className="hidden sm:table-cell">Unit</TableHead>
                   <TableHead className="text-right">In stock</TableHead>
-                  <TableHead className="text-right">Min level</TableHead>
-                  <TableHead className="text-right">Stock value</TableHead>
-                  <TableHead>Expiry</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Min level</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Stock value</TableHead>
+                  <TableHead className="hidden lg:table-cell">Expiry</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -212,17 +212,17 @@ function CurrentStock({
                 {data?.data.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium text-slate-900">{r.name}</TableCell>
-                    <TableCell>{r.category?.name || '—'}</TableCell>
-                    <TableCell>{r.unit}</TableCell>
+                    <TableCell className="hidden md:table-cell">{r.category?.name || '—'}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{r.unit}</TableCell>
                     <TableCell className="text-right font-mono">{formatNumber(r.current_stock, 2)}</TableCell>
-                    <TableCell className="text-right font-mono text-slate-500">
+                    <TableCell className="hidden md:table-cell text-right font-mono text-slate-500">
                       {formatNumber(r.min_stock_level, 2)}
                     </TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(r.stock_value)}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell text-right font-mono">{formatCurrency(r.stock_value)}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <ExpiryBadge date={r.expiry_date} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <LowStockBadge current={r.current_stock} min={r.min_stock_level} />
                     </TableCell>
                     <TableCell>
@@ -319,7 +319,7 @@ function Movements({
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-56">
+            <SelectTrigger className="w-full sm:w-56">
               <SelectValue placeholder="Product" />
             </SelectTrigger>
             <SelectContent>
@@ -338,7 +338,7 @@ function Movements({
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -359,7 +359,7 @@ function Movements({
               setFromDate(e.target.value);
               setPage(1);
             }}
-            className="w-44"
+            className="w-full sm:w-44"
           />
           <Input
             type="date"
@@ -368,7 +368,7 @@ function Movements({
               setToDate(e.target.value);
               setPage(1);
             }}
-            className="w-44"
+            className="w-full sm:w-44"
           />
         </div>
 
@@ -380,10 +380,10 @@ function Movements({
                 <TableHead>Product</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Rate</TableHead>
-                <TableHead className="text-right">Total amount</TableHead>
-                <TableHead>Reference</TableHead>
-                <TableHead>Notes</TableHead>
+                <TableHead className="hidden sm:table-cell text-right">Rate</TableHead>
+                <TableHead className="hidden md:table-cell text-right">Total amount</TableHead>
+                <TableHead className="hidden md:table-cell">Reference</TableHead>
+                <TableHead className="hidden lg:table-cell">Notes</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
@@ -429,14 +429,14 @@ function Movements({
                       {isIn ? '+' : '-'}
                       {formatNumber(m.quantity, 2)}
                     </TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(m.rate)}</TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="hidden sm:table-cell text-right font-mono">{formatCurrency(m.rate)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-mono">
                       {rate > 0 ? formatCurrency(lineTotal) : '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-slate-500">
+                    <TableCell className="hidden md:table-cell text-xs text-slate-500">
                       {m.reference_type || '—'}
                     </TableCell>
-                    <TableCell className="text-xs text-slate-500">{m.notes || '—'}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-xs text-slate-500">{m.notes || '—'}</TableCell>
                     <TableCell>
                       {canView ? (
                         <Button
@@ -506,7 +506,7 @@ function Purchases({
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue placeholder="Payment status" />
             </SelectTrigger>
             <SelectContent>
@@ -527,10 +527,10 @@ function Purchases({
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Supplier</TableHead>
-                <TableHead>Invoice</TableHead>
-                <TableHead className="text-right">Items</TableHead>
+                <TableHead className="hidden sm:table-cell">Invoice</TableHead>
+                <TableHead className="hidden sm:table-cell text-right">Items</TableHead>
                 <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Paid</TableHead>
+                <TableHead className="hidden md:table-cell text-right">Paid</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -558,10 +558,10 @@ function Purchases({
                 <TableRow key={p.id}>
                   <TableCell>{new Date(p.purchase_date).toLocaleDateString('en-IN')}</TableCell>
                   <TableCell className="font-medium">{p.party?.name || '—'}</TableCell>
-                  <TableCell>{p.invoice_number || '—'}</TableCell>
-                  <TableCell className="text-right">{p.item_count ?? '—'}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{p.invoice_number || '—'}</TableCell>
+                  <TableCell className="hidden sm:table-cell text-right">{p.item_count ?? '—'}</TableCell>
                   <TableCell className="text-right font-mono">{formatCurrency(p.total_amount)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatCurrency(p.paid_amount)}</TableCell>
+                  <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(p.paid_amount)}</TableCell>
                   <TableCell>
                     <Badge
                       variant={

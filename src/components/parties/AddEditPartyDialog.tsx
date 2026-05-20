@@ -17,18 +17,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { PartyTypeSelect } from '@/components/parties/PartyTypeSelect';
 import type { Party } from '@/types';
 
 const schema = z.object({
   name: z.string().min(1, 'Required').max(200),
-  type: z.enum(['customer', 'supplier', 'both']),
+  type: z.string().min(1).max(50),
   mobile: z.string().max(24).optional(),
   gstin: z.string().max(32).optional(),
   address: z.string().max(1000).optional(),
@@ -124,19 +118,10 @@ export function AddEditPartyDialog({ party, open, onOpenChange }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Type</Label>
-              <Select
+              <PartyTypeSelect
                 value={form.watch('type')}
-                onValueChange={(v) => form.setValue('type', v as FormInput['type'])}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="supplier">Supplier</SelectItem>
-                  <SelectItem value="both">Both</SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={(v) => form.setValue('type', v)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Mobile</Label>

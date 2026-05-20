@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { ImagePlus, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { api } from '@/lib/axios';
 import {
   Dialog,
@@ -62,6 +62,9 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
   const [paidAmount, setPaidAmount] = useState('');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<LineItem[]>([newRow()]);
+  const [billFile, setBillFile] = useState<File | null>(null);
+  const [billPreview, setBillPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const total = useMemo(
     () =>
@@ -87,6 +90,23 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
     setItems((rows) => (rows.length === 1 ? rows : rows.filter((r) => r.id !== id)));
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBillFile(file);
+    if (file.type.startsWith('image/')) {
+      setBillPreview(URL.createObjectURL(file));
+    } else {
+      setBillPreview(null);
+    }
+  }
+
+  function clearFile() {
+    setBillFile(null);
+    setBillPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
   function reset() {
     setPartyId('');
     setPurchaseDate(new Date().toISOString().split('T')[0]);
@@ -95,6 +115,9 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
     setPaidAmount('');
     setNotes('');
     setItems([newRow()]);
+    setBillFile(null);
+    setBillPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   const mutation = useMutation({
@@ -116,6 +139,12 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
             expiry_date: i.expiry_date || undefined,
           })),
       };
+      if (billFile) {
+        const fd = new FormData();
+        fd.append('data', JSON.stringify(payload));
+        fd.append('bill_image', billFile);
+        return api.post('/purchases', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      }
       return api.post('/purchases', payload);
     },
     onSuccess: () => {
@@ -275,6 +304,48 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
             <div className="space-y-1.5">
               <Label>Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Bill / Invoice photo</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              {billFile ? (
+                <div className="relative inline-block">
+                  {billPreview ? (
+                    <img
+                      src={billPreview}
+                      alt="Bill preview"
+                      className="h-24 w-auto rounded-lg border border-slate-200 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">
+                      <ImagePlus className="h-4 w-4 text-slate-400" />
+                      {billFile.name}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={clearFile}
+                    className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-16 w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 text-sm text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-colors"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  Upload bill image or PDF
+                </button>
+              )}
             </div>
           </div>
           <div className="space-y-3">

@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ExternalLink, FileText, Pencil } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import type { Purchase } from '@/types';
 
@@ -10,9 +13,12 @@ interface Props {
   purchaseId: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  onEdit?: (id: string) => void;
 }
 
-export function PurchaseDetailSheet({ purchaseId, open, onOpenChange }: Props) {
+export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: Props) {
+  const [imgExpanded, setImgExpanded] = useState(false);
+
   const { data, isLoading } = useQuery({
     queryKey: ['purchase', purchaseId],
     queryFn: async () => {
@@ -29,10 +35,21 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange }: Props) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
+        <SheetHeader className="flex flex-row items-center justify-between pr-8">
           <SheetTitle>
             Purchase {data?.invoice_number ? `· ${data.invoice_number}` : ''}
           </SheetTitle>
+          {data && onEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => onEdit(data.id)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
         </SheetHeader>
 
         {isLoading && <Skeleton className="h-64 w-full" />}
@@ -125,6 +142,52 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange }: Props) {
                 <p className="text-sm text-slate-700">{data.notes}</p>
               </section>
             )}
+
+            {data.bill_image_url && (() => {
+              const url = data.bill_image_url!;
+              const isImage = /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url);
+              return (
+                <section>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Bill / Invoice</div>
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-slate-500">
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Open original
+                      </Button>
+                    </a>
+                  </div>
+                  {isImage ? (
+                    <div
+                      className="cursor-zoom-in overflow-hidden rounded-xl border border-slate-200"
+                      onClick={() => setImgExpanded((v) => !v)}
+                    >
+                      <img
+                        src={url}
+                        alt="Purchase bill"
+                        className={`w-full object-contain transition-all ${imgExpanded ? 'max-h-none' : 'max-h-48'}`}
+                      />
+                      <p className="text-center text-xs text-slate-400 py-1">
+                        {imgExpanded ? 'Click to collapse' : 'Click to expand'}
+                      </p>
+                    </div>
+                  ) : (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100 transition-colors"
+                    >
+                      <FileText className="h-8 w-8 text-slate-400 shrink-0" />
+                      <div>
+                        <div className="text-sm font-medium text-slate-700">View PDF</div>
+                        <div className="text-xs text-slate-400 truncate max-w-xs">{url}</div>
+                      </div>
+                    </a>
+                  )}
+                </section>
+              );
+            })()}
           </div>
         )}
       </SheetContent>

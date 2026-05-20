@@ -152,10 +152,21 @@ export function PartiesPage() {
                       <TableCell>
                         <Badge
                           variant={
-                            p.type === 'supplier' ? 'info' : p.type === 'both' ? 'muted' : 'success'
+                            p.type === 'customer'
+                              ? 'success'
+                              : p.type.startsWith('supplier')
+                                ? 'info'
+                                : p.type === 'both'
+                                  ? 'muted'
+                                  : 'muted'
                           }
                         >
-                          {p.type}
+                          {p.type === 'customer' ? 'Customer'
+                            : p.type === 'supplier' ? 'Supplier'
+                            : p.type === 'supplier_trader' ? 'Supplier (Trader)'
+                            : p.type === 'supplier_manufacturer' ? 'Supplier (Manufacturer)'
+                            : p.type === 'both' ? 'Both'
+                            : p.type}
                         </Badge>
                       </TableCell>
                       <TableCell>{p.mobile || '—'}</TableCell>

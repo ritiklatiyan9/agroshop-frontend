@@ -104,9 +104,11 @@ export function NewBillPage({ billType }: Props) {
     return n;
   }, [discountInput, discountType, calcItems]);
 
+  const gstBeforeDiscount = user?.gst_before_discount ?? false;
+
   const summary = useMemo(
-    () => calculateBill(calcItems, discountAmount, billType),
-    [calcItems, discountAmount, billType],
+    () => calculateBill(calcItems, discountAmount, billType, gstBeforeDiscount),
+    [calcItems, discountAmount, billType, gstBeforeDiscount],
   );
 
   const paidAmount = Number(paidInput) || 0;
@@ -634,43 +636,85 @@ export function NewBillPage({ billType }: Props) {
 
           <div className="px-4 py-3 space-y-1.5 text-sm border-b border-slate-100 flex-shrink-0">
             <SummaryRow label="Subtotal" value={formatCurrency(summary.subtotal)} />
+            {/* Discount input row — shown before GST when gstBeforeDiscount is ON */}
+            {gstBeforeDiscount && (
+              <>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-slate-500 text-xs">Discount</span>
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value={discountType}
+                      onValueChange={(v) => setDiscountType(v as 'flat' | 'percent')}
+                    >
+                      <SelectTrigger className="h-7 w-14 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="flat">₹</SelectItem>
+                        <SelectItem value="percent">%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={discountInput}
+                      onChange={(e) => setDiscountInput(e.target.value)}
+                      className="h-7 w-20 text-right tabular-nums text-xs"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                {summary.discount_amount > 0 && (
+                  <SummaryRow
+                    label="Discount applied"
+                    value={`- ${formatCurrency(summary.discount_amount)}`}
+                    muted
+                  />
+                )}
+              </>
+            )}
             {billType === 'gst' && (
               <>
                 <SummaryRow label="CGST" value={formatCurrency(summary.total_cgst)} />
                 <SummaryRow label="SGST" value={formatCurrency(summary.total_sgst)} />
               </>
             )}
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-slate-500 text-xs">Discount</span>
-              <div className="flex items-center gap-1.5">
-                <Select
-                  value={discountType}
-                  onValueChange={(v) => setDiscountType(v as 'flat' | 'percent')}
-                >
-                  <SelectTrigger className="h-7 w-14 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="flat">₹</SelectItem>
-                    <SelectItem value="percent">%</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={discountInput}
-                  onChange={(e) => setDiscountInput(e.target.value)}
-                  className="h-7 w-20 text-right tabular-nums text-xs"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-            {summary.discount_amount > 0 && (
-              <SummaryRow
-                label="Discount applied"
-                value={`- ${formatCurrency(summary.discount_amount)}`}
-                muted
-              />
+            {/* Discount input row — shown after GST when gstBeforeDiscount is OFF (default) */}
+            {!gstBeforeDiscount && (
+              <>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-slate-500 text-xs">Discount</span>
+                  <div className="flex items-center gap-1.5">
+                    <Select
+                      value={discountType}
+                      onValueChange={(v) => setDiscountType(v as 'flat' | 'percent')}
+                    >
+                      <SelectTrigger className="h-7 w-14 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="flat">₹</SelectItem>
+                        <SelectItem value="percent">%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={discountInput}
+                      onChange={(e) => setDiscountInput(e.target.value)}
+                      className="h-7 w-20 text-right tabular-nums text-xs"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                {summary.discount_amount > 0 && (
+                  <SummaryRow
+                    label="Discount applied"
+                    value={`- ${formatCurrency(summary.discount_amount)}`}
+                    muted
+                  />
+                )}
+              </>
             )}
           </div>
 
