@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Eye, EyeOff, Package, Clock, TrendingUp, Wallet, CheckCheck, X, CheckCircle2 } from 'lucide-react';
+import { Bell, EyeOff, Package, Clock, TrendingUp, Wallet, CheckCheck, X, CheckCircle2 } from 'lucide-react';
+// EyeOff = "hide" action (owner only)
 import { api } from '@/lib/axios';
+import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,6 +44,8 @@ const SEVERITY_STYLES: Record<Severity, { card: string; icon: string; badge: str
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  // Read-state is shared at the owner level, so only the owner may hide/dismiss.
+  const isOwner = useAuthStore((s) => s.user?.role === 'owner');
 
   const { data, isLoading } = useQuery<NotificationsResponse>({
     queryKey: ['notifications'],
@@ -73,6 +77,8 @@ export function NotificationBell() {
 
   const unreadCount = data?.unread_count ?? 0;
   const notifications = data?.data ?? [];
+  // Hidden (read) notifications drop out of the list; only the owner can hide them.
+  const visibleNotifications = notifications.filter((n) => !n.isRead);
 
   return (
     <>
@@ -94,7 +100,7 @@ export function NotificationBell() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-md flex flex-col p-0 gap-0"
+          className="w-full sm:max-w-md flex flex-col p-0 gap-0 [&>button.absolute]:hidden"
         >
           {/* Header */}
           <SheetHeader className="flex flex-row items-center justify-between px-4 py-3 border-b border-slate-100 space-y-0">
@@ -107,7 +113,7 @@ export function NotificationBell() {
               )}
             </div>
             <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
+              {isOwner && unreadCount > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -116,14 +122,15 @@ export function NotificationBell() {
                   disabled={markReadMutation.isPending}
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
-                  Mark all read
+                  Hide all
                 </Button>
               )}
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 text-slate-500"
                 onClick={() => setOpen(false)}
+                aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -140,7 +147,7 @@ export function NotificationBell() {
               </>
             )}
 
-            {!isLoading && notifications.length === 0 && (
+            {!isLoading && visibleNotifications.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-slate-400">
                 <Bell className="h-10 w-10 mb-3 opacity-30" />
                 <p className="text-sm font-medium">All caught up!</p>
@@ -148,44 +155,34 @@ export function NotificationBell() {
               </div>
             )}
 
-            {notifications.map((n) => {
+            {visibleNotifications.map((n) => {
               const styles = SEVERITY_STYLES[n.severity];
               return (
                 <div
                   key={n.key}
-                  className={`relative flex items-start gap-3 rounded-xl border p-3 transition-opacity ${styles.card} ${n.isRead ? 'opacity-60' : ''}`}
+                  className={`relative flex items-start gap-3 rounded-xl border p-3 ${styles.card}`}
                 >
-                  {/* Unread dot */}
-                  {!n.isRead && (
-                    <span className={`absolute top-3 right-3 h-2 w-2 rounded-full ${styles.badge}`} />
-                  )}
-
                   {/* Type icon */}
                   <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${styles.icon}`}>
                     {ICON[n.type]}
                   </div>
 
                   {/* Text */}
-                  <div className="flex-1 min-w-0 pr-6">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 leading-tight">{n.title}</p>
                     <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{n.body}</p>
                   </div>
 
-                  {/* Mark as read / unread indicator */}
-                  {!n.isRead && (
+                  {/* Hide — owner only (read state is shared across the shop) */}
+                  {isOwner && (
                     <button
-                      className="absolute bottom-2.5 right-2 p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-white/60 transition-colors"
-                      title="Mark as read"
+                      className="shrink-0 -mt-0.5 -mr-1 flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-white/70 transition-colors"
+                      title="Hide notification"
                       onClick={() => handleMarkOne(n.key)}
                       disabled={markReadMutation.isPending}
                     >
-                      <Eye className="h-3.5 w-3.5" />
+                      <EyeOff className="h-4 w-4" />
                     </button>
-                  )}
-                  {n.isRead && (
-                    <span className="absolute bottom-2.5 right-2 p-1 text-slate-300" title="Read">
-                      <EyeOff className="h-3.5 w-3.5" />
-                    </span>
                   )}
                 </div>
               );
@@ -193,10 +190,11 @@ export function NotificationBell() {
           </div>
 
           {/* Footer */}
-          {notifications.length > 0 && (
+          {visibleNotifications.length > 0 && (
             <div className="border-t border-slate-100 px-4 py-2.5 text-center">
               <p className="text-xs text-slate-400">
-                {notifications.filter((n) => n.isRead).length} of {notifications.length} notifications read
+                {visibleNotifications.length} active notification{visibleNotifications.length !== 1 ? 's' : ''}
+                {isOwner ? ' · tap the eye to hide' : ''}
               </p>
             </div>
           )}

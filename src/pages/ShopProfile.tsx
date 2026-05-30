@@ -3,7 +3,8 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2, Upload, Store, MapPin, FileText, Building, Receipt } from 'lucide-react';
 import { api } from '@/lib/axios';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore, useCurrentShop } from '@/store/authStore';
+import type { Shop } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,47 +47,48 @@ const EMPTY: FormState = {
 };
 
 export function ShopProfilePage() {
-  const { user, setUser } = useAuthStore();
+  const shop = useCurrentShop();
+  const upsertShop = useAuthStore((s) => s.upsertShop);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(user?.logo_url ?? null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(shop?.logo_url ?? null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
 
   useEffect(() => {
-    if (user) {
+    if (shop) {
       setForm({
-        shop_name: user.shop_name ?? '',
-        shop_phone: user.shop_phone ?? '',
-        shop_email: user.shop_email ?? '',
-        shop_address: user.shop_address ?? '',
-        shop_city: user.shop_city ?? '',
-        shop_state: user.shop_state ?? '',
-        shop_pin: user.shop_pin ?? '',
-        shop_gstin: user.shop_gstin ?? '',
-        shop_license_no: user.shop_license_no ?? '',
-        shop_pesticide_license_no: user.shop_pesticide_license_no ?? '',
-        bank_name: user.bank_name ?? '',
-        bank_account: user.bank_account ?? '',
-        bank_ifsc: user.bank_ifsc ?? '',
-        bill_terms: user.bill_terms ?? '',
+        shop_name: shop.name ?? '',
+        shop_phone: shop.phone ?? '',
+        shop_email: shop.email ?? '',
+        shop_address: shop.address ?? '',
+        shop_city: shop.city ?? '',
+        shop_state: shop.state ?? '',
+        shop_pin: shop.pin ?? '',
+        shop_gstin: shop.gstin ?? '',
+        shop_license_no: shop.license_no ?? '',
+        shop_pesticide_license_no: shop.pesticide_license_no ?? '',
+        bank_name: shop.bank_name ?? '',
+        bank_account: shop.bank_account ?? '',
+        bank_ifsc: shop.bank_ifsc ?? '',
+        bill_terms: shop.bill_terms ?? '',
       });
-      setLogoPreview(user.logo_url ?? null);
+      setLogoPreview(shop.logo_url ?? null);
     }
-  }, [user]);
+  }, [shop]);
 
   const mutation = useMutation({
     mutationFn: async () => {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
       if (logoFile) fd.append('logo', logoFile);
-      const res = await api.put<{ user: typeof user }>('/auth/shop-profile', fd, {
+      const res = await api.put<{ shop: Shop }>('/auth/shop-profile', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return res.data;
     },
     onSuccess: (data) => {
       toast.success('Shop profile saved');
-      if (data.user) setUser(data.user);
+      if (data.shop) upsertShop(data.shop);
       setLogoFile(null);
     },
     onError: (err: { response?: { data?: { error?: string } } }) => {

@@ -39,6 +39,8 @@ export function LoginPage() {
         accessToken: res.data.access_token,
         refreshToken: res.data.refresh_token,
         permissions: res.data.permissions ?? null,
+        shops: res.data.shops ?? [],
+        currentShopId: res.data.current_shop_id ?? null,
       });
       savePendingFcmToken();
       toast.success('Welcome back!');

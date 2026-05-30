@@ -35,6 +35,12 @@ const STATUS_CHIPS = [
   { value: 'inactive', label: 'Inactive' },
 ] as const;
 
+/** "100 ml" when a pack size is set, otherwise just the unit. */
+function unitLabel(p: Product): string {
+  const size = p.pack_size ? Number(p.pack_size) : 0;
+  return size > 0 ? `${size} ${p.unit}` : p.unit;
+}
+
 export function ProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -236,7 +242,7 @@ export function ProductsPage() {
                     <TableCell className="font-medium text-slate-900">{p.name}</TableCell>
                     <TableCell>{p.brand || '—'}</TableCell>
                     <TableCell>{p.category?.name || '—'}</TableCell>
-                    <TableCell>{p.unit}</TableCell>
+                    <TableCell>{unitLabel(p)}</TableCell>
                     <TableCell className="text-right font-mono">{formatCurrency(p.selling_price)}</TableCell>
                     <TableCell className="text-right"><Badge variant="muted">{p.gst_rate}%</Badge></TableCell>
                     <TableCell className="text-right font-mono">{formatNumber(p.current_stock, 2)}</TableCell>
@@ -326,7 +332,7 @@ export function ProductsPage() {
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                    {[p.brand, p.category?.name].filter(Boolean).join(' · ') || '—'}
+                    {[p.brand, p.category?.name, p.pack_size && Number(p.pack_size) > 0 ? unitLabel(p) : null].filter(Boolean).join(' · ') || '—'}
                   </p>
                   {/* Price + Stock row */}
                   <div className="flex items-center gap-2 mt-2">

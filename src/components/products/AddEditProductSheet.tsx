@@ -27,7 +27,8 @@ const schema = z.object({
   brand: z.string().optional(),
   category_id: z.string().optional(),
   hsn_code: z.string().optional(),
-  unit: z.enum(['kg', 'ltr', 'packet', 'bottle', 'box', 'piece']),
+  unit: z.enum(['kg', 'gm', 'ltr', 'ml', 'packet', 'bottle', 'box', 'piece']),
+  pack_size: z.coerce.number().min(0).optional(),
   purchase_price: z.coerce.number().min(0),
   selling_price: z.coerce.number().min(0),
   gst_rate: z.coerce.number().refine((v) => [0, 5, 12, 18].includes(v)),
@@ -39,6 +40,20 @@ const schema = z.object({
 });
 
 type FormInput = z.infer<typeof schema>;
+
+const UNIT_OPTIONS = ['ml', 'gm', 'ltr', 'kg', 'packet', 'bottle', 'box', 'piece'] as const;
+
+// Quick-pick pack sizes shown per unit (tap a chip to fill the size). Empty = no presets, free entry only.
+const PACK_SIZE_PRESETS: Record<FormInput['unit'], number[]> = {
+  ml: [50, 100, 200, 250, 500, 1000],
+  gm: [50, 100, 250, 500, 1000],
+  ltr: [1, 2, 5, 10, 20],
+  kg: [1, 5, 10, 25, 50],
+  packet: [],
+  bottle: [],
+  box: [],
+  piece: [],
+};
 
 interface Props {
   open: boolean;
@@ -62,6 +77,7 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
       category_id: '',
       hsn_code: '',
       unit: 'piece',
+      pack_size: 0,
       purchase_price: 0,
       selling_price: 0,
       gst_rate: 0,
@@ -80,6 +96,7 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
         category_id: product.category_id || '',
         hsn_code: product.hsn_code || '',
         unit: product.unit,
+        pack_size: product.pack_size ? Number(product.pack_size) : 0,
         purchase_price: Number(product.purchase_price),
         selling_price: Number(product.selling_price),
         gst_rate: product.gst_rate,
@@ -96,6 +113,7 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
         category_id: '',
         hsn_code: '',
         unit: 'piece',
+        pack_size: 0,
         purchase_price: 0,
         selling_price: 0,
         gst_rate: 0,
@@ -217,7 +235,7 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(['kg', 'ltr', 'packet', 'bottle', 'box', 'piece'] as const).map((u) => (
+                  {UNIT_OPTIONS.map((u) => (
                     <SelectItem key={u} value={u}>
                       {u}
                     </SelectItem>
@@ -243,6 +261,44 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
                 </SelectContent>
               </Select>
             </FormField>
+
+            <div className="md:col-span-2 space-y-1.5">
+              <Label>Pack size ({form.watch('unit')})</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  placeholder="e.g. 100"
+                  className="max-w-[160px]"
+                  {...form.register('pack_size')}
+                />
+                <span className="text-sm text-slate-500">{form.watch('unit')}</span>
+              </div>
+              {PACK_SIZE_PRESETS[form.watch('unit')].length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {PACK_SIZE_PRESETS[form.watch('unit')].map((size) => {
+                    const active = Number(form.watch('pack_size')) === size;
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => form.setValue('pack_size', size, { shouldDirty: true })}
+                        className={
+                          'rounded-full border px-3 py-1 text-xs font-medium transition-colors ' +
+                          (active
+                            ? 'border-emerald-600 bg-emerald-600 text-white'
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50')
+                        }
+                      >
+                        {size}{form.watch('unit')}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs text-slate-400">Tap a preset or type a custom size. Leave 0 if not applicable.</p>
+            </div>
 
             <FormField label="Purchase price (₹)">
               <Input type="number" step="0.01" {...form.register('purchase_price')} />

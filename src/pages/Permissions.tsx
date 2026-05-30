@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Shield, Loader2, Info } from 'lucide-react';
+import { Shield, Loader2, Info, Store } from 'lucide-react';
 import { api } from '@/lib/axios';
+import { useCurrentShop } from '@/store/authStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -42,6 +43,7 @@ export function PermissionsPage() {
   const [localPerms, setLocalPerms] = useState<ModulePermission[] | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const queryClient = useQueryClient();
+  const currentShop = useCurrentShop();
 
   const { data: supervisors = [], isLoading: supervisorsLoading } = useQuery({
     queryKey: ['supervisors'],
@@ -52,7 +54,7 @@ export function PermissionsPage() {
   });
 
   const { isLoading: permsLoading } = useQuery({
-    queryKey: ['supervisor-permissions', selectedSupervisorId],
+    queryKey: ['supervisor-permissions', selectedSupervisorId, currentShop?.id],
     queryFn: async () => {
       const res = await api.get<{ data: ModulePermission[] }>(
         `/users/supervisors/${selectedSupervisorId}/permissions`,
@@ -122,7 +124,9 @@ export function PermissionsPage() {
   }
 
   const selectedSupervisor = supervisors.find((s) => s.id === selectedSupervisorId);
-  const activeSupervisors = supervisors.filter((s) => s.is_active);
+  const activeSupervisors = supervisors.filter(
+    (s) => s.is_active && (!currentShop || s.shop_ids.includes(currentShop.id)),
+  );
 
   const grouped = GROUP_ORDER.map((group) => ({
     group,
@@ -134,7 +138,14 @@ export function PermissionsPage() {
       <div className="flex-shrink-0">
         <PageHeader
           title="Permissions"
-          description="Control which sidebar items each supervisor can access and what actions they can perform."
+          description="Control which sidebar items each supervisor can access and what actions they can perform. Permissions apply to the shop selected below."
+          actions={
+            currentShop && (
+              <Badge variant="outline" className="gap-1.5 text-slate-600">
+                <Store className="h-3.5 w-3.5" /> {currentShop.name}
+              </Badge>
+            )
+          }
         />
       </div>
 

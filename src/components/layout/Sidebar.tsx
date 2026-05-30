@@ -17,9 +17,11 @@ import {
   Database,
   UserCog,
   Shield,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
+import { ShopSwitcher } from './ShopSwitcher';
 import type { Role, ModuleKey } from '@/types';
 
 interface NavItem {
@@ -77,6 +79,7 @@ const groups: NavGroup[] = [
   {
     label: 'Administration',
     items: [
+      { label: 'Shop Management', to: '/admin/shops', icon: Store, roles: ['owner'] },
       { label: 'Supervisors', to: '/admin/supervisors', icon: UserCog, roles: ['owner'] },
       { label: 'Permissions', to: '/admin/permissions', icon: Shield, roles: ['owner'] },
       { label: 'Shop Profile', to: '/settings/shop', icon: Settings, roles: ['owner'] },
@@ -106,12 +109,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <nav className="flex h-full w-60 flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-14 items-center gap-2 border-b border-slate-200 px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold">
-          A
-        </div>
-        <span className="text-base font-semibold text-slate-900">AgroShop</span>
-      </div>
+      <ShopSwitcher onNavigate={onNavigate} />
       <div className="flex-1 overflow-y-auto py-4">
         {visibleGroups.map((group) => (
           <div key={group.label} className="px-3 pb-4">

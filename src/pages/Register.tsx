@@ -71,6 +71,9 @@ export function RegisterPage() {
         user: res.data.user,
         accessToken: res.data.access_token,
         refreshToken: res.data.refresh_token,
+        permissions: res.data.permissions ?? null,
+        shops: res.data.shops ?? [],
+        currentShopId: res.data.current_shop_id ?? null,
       });
       toast.success('Account created!');
       navigate('/dashboard', { replace: true });

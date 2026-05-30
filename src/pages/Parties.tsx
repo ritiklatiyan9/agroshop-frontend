@@ -209,10 +209,10 @@ export function PartiesPage() {
                       <TableCell>{p.is_active ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" title="View ledger" onClick={() => navigate(`/parties/${p.id}/ledger`)}><BookOpen className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title="Record payment" onClick={() => setPayParty(p)}><Wallet className="h-4 w-4 text-emerald-600" /></Button>
-                          <Button variant="ghost" size="icon" title="Edit" onClick={() => { setEditing(p); setDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title="Deactivate" onClick={() => setDeleting(p)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                          <Button variant="ghost" size="sm" onClick={() => navigate(`/parties/${p.id}/ledger`)}><BookOpen className="mr-1.5 h-4 w-4" /> Ledger</Button>
+                          <Button variant="ghost" size="sm" onClick={() => setPayParty(p)}><Wallet className="mr-1.5 h-4 w-4 text-emerald-600" /> Payment</Button>
+                          <Button variant="ghost" size="sm" onClick={() => { setEditing(p); setDialogOpen(true); }}><Pencil className="mr-1.5 h-4 w-4" /> Edit</Button>
+                          <Button variant="ghost" size="sm" onClick={() => setDeleting(p)}><Trash2 className="mr-1.5 h-4 w-4 text-red-500" /> Deactivate</Button>
                         </div>
                       </TableCell>
                     </TableRow>

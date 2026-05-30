@@ -31,16 +31,31 @@ export interface User {
   email: string;
   role: Role;
   owner_id: string | null;
+  logo_url: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+/** A shop owned by an owner. Holds shop profile + bill settings (per-shop). */
+export interface Shop {
+  id: string;
+  owner_id: string | null;
+  name: string;
+  // legacy aliases mirrored by the API for existing forms
   shop_name: string | null;
   shop_address: string | null;
-  shop_city: string | null;
-  shop_state: string | null;
-  shop_pin: string | null;
-  shop_gstin: string | null;
-  shop_license_no: string | null;
-  shop_pesticide_license_no: string | null;
   shop_phone: string | null;
   shop_email: string | null;
+  shop_gstin: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  pin: string | null;
+  gstin: string | null;
+  license_no: string | null;
+  pesticide_license_no: string | null;
+  phone: string | null;
+  email: string | null;
   logo_url: string | null;
   bank_name: string | null;
   bank_account: string | null;
@@ -68,11 +83,12 @@ export interface Supervisor {
   email: string;
   role: Role;
   owner_id: string | null;
+  shop_ids: string[];
   is_active: boolean;
   created_at: string;
 }
 
-export type ProductUnit = 'kg' | 'ltr' | 'packet' | 'bottle' | 'box' | 'piece';
+export type ProductUnit = 'kg' | 'gm' | 'ltr' | 'ml' | 'packet' | 'bottle' | 'box' | 'piece';
 export type GstRate = 0 | 5 | 12 | 18;
 
 export interface Category {
@@ -90,6 +106,7 @@ export interface Product {
   category?: { id: string; name: string } | null;
   hsn_code: string | null;
   unit: ProductUnit;
+  pack_size: string | null;
   purchase_price: string;
   selling_price: string;
   gst_rate: number;

@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2, Receipt, Printer, MessageSquare, Hash } from 'lucide-react';
 import { api } from '@/lib/axios';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore, useCurrentShop } from '@/store/authStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,35 +50,36 @@ const EMPTY: BillSettingsForm = {
 };
 
 export function BillSettingsPage() {
-  const { user, setUser } = useAuthStore();
+  const shop = useCurrentShop();
+  const upsertShop = useAuthStore((s) => s.upsertShop);
   const [form, setForm] = useState<BillSettingsForm>(EMPTY);
 
   useEffect(() => {
-    if (!user) return;
+    if (!shop) return;
     setForm({
-      gst_bill_prefix: user.gst_bill_prefix ?? 'INV',
-      non_gst_bill_prefix: user.non_gst_bill_prefix ?? 'BILL',
-      default_payment_mode: user.default_payment_mode ?? 'cash',
-      show_bank_details: user.show_bank_details ?? false,
-      show_signature_line: user.show_signature_line ?? true,
-      show_terms: user.show_terms ?? true,
-      footer_message_gst: user.footer_message_gst ?? '',
-      footer_message_non_gst: user.footer_message_non_gst ?? '',
-      thermal_paper_size: user.thermal_paper_size ?? '80mm',
-      auto_print_after_save: user.auto_print_after_save ?? false,
-      auto_generate_pdf: user.auto_generate_pdf ?? false,
-      gst_before_discount: user.gst_before_discount ?? false,
+      gst_bill_prefix: shop.gst_bill_prefix ?? 'INV',
+      non_gst_bill_prefix: shop.non_gst_bill_prefix ?? 'BILL',
+      default_payment_mode: shop.default_payment_mode ?? 'cash',
+      show_bank_details: shop.show_bank_details ?? false,
+      show_signature_line: shop.show_signature_line ?? true,
+      show_terms: shop.show_terms ?? true,
+      footer_message_gst: shop.footer_message_gst ?? '',
+      footer_message_non_gst: shop.footer_message_non_gst ?? '',
+      thermal_paper_size: shop.thermal_paper_size ?? '80mm',
+      auto_print_after_save: shop.auto_print_after_save ?? false,
+      auto_generate_pdf: shop.auto_generate_pdf ?? false,
+      gst_before_discount: shop.gst_before_discount ?? false,
     });
-  }, [user]);
+  }, [shop]);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await api.put<{ user: typeof user }>('/auth/bill-settings', form);
+      const res = await api.put<{ shop: import('@/types').Shop }>('/auth/bill-settings', form);
       return res.data;
     },
     onSuccess: (data) => {
       toast.success('Bill settings saved');
-      if (data.user) setUser(data.user);
+      if (data.shop) upsertShop(data.shop);
     },
     onError: (err: { response?: { data?: { error?: string } } }) => {
       toast.error(err.response?.data?.error || 'Failed to save');

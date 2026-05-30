@@ -6,10 +6,13 @@ const baseURL = import.meta.env.VITE_API_URL || 'https://agroshop-backend.vercel
 export const api = axios.create({ baseURL });
 
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+  const { accessToken, currentShopId } = useAuthStore.getState();
+  config.headers = config.headers || {};
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  if (currentShopId) {
+    config.headers['X-Shop-Id'] = currentShopId;
   }
   return config;
 });

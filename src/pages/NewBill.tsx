@@ -35,7 +35,7 @@ import { ProductSearchAdd } from '@/components/billing/ProductSearchAdd';
 import { PartySearchSelect } from '@/components/billing/PartySearchSelect';
 import { useAllProducts } from '@/hooks/useProducts';
 import { useParties } from '@/hooks/useParties';
-import { useAuthStore } from '@/store/authStore';
+import { useCurrentShop } from '@/store/authStore';
 import { useActionNotify } from '@/hooks/useActionNotify';
 import { calculateBill, type BillItemInput, type BillType } from '@/lib/billCalculator';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -57,7 +57,7 @@ interface Props {
 
 export function NewBillPage({ billType }: Props) {
   const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
+  const shop = useCurrentShop();
   const { data: products = [] } = useAllProducts();
   const { data: parties = [] } = useParties('customer');
   const { notify } = useActionNotify();
@@ -73,7 +73,7 @@ export function NewBillPage({ billType }: Props) {
   const [discountInput, setDiscountInput] = useState('');
   const [discountType, setDiscountType] = useState<'flat' | 'percent'>('flat');
   const [paymentMode, setPaymentMode] = useState<BillPaymentMode>(
-    (user?.default_payment_mode as BillPaymentMode) || 'cash',
+    (shop?.default_payment_mode as BillPaymentMode) || 'cash',
   );
   const [paidInput, setPaidInput] = useState('');
   const [notes, setNotes] = useState('');
@@ -107,7 +107,7 @@ export function NewBillPage({ billType }: Props) {
     return n;
   }, [discountInput, discountType, calcItems]);
 
-  const gstBeforeDiscount = user?.gst_before_discount ?? false;
+  const gstBeforeDiscount = shop?.gst_before_discount ?? false;
 
   const summary = useMemo(
     () => calculateBill(calcItems, discountAmount, billType, gstBeforeDiscount),
@@ -197,7 +197,7 @@ export function NewBillPage({ billType }: Props) {
       const bill = await mutation.mutateAsync();
       toast.success(`Bill ${bill.bill_number} created`);
       notify('Bill Created', `${bill.bill_number} for ${customerName} saved successfully`);
-      if (printAfter || user?.auto_print_after_save) {
+      if (printAfter || shop?.auto_print_after_save) {
         openBillPrint(bill.id, navigate);
       }
       navigate('/bills');

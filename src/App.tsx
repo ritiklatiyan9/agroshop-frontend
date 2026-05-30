@@ -13,6 +13,7 @@ import { BillSettingsPage } from '@/pages/BillSettings';
 import { BackupPage } from '@/pages/Backup';
 import { SupervisorsPage } from '@/pages/Supervisors';
 import { PermissionsPage } from '@/pages/Permissions';
+import { ShopManagementPage } from '@/pages/ShopManagement';
 import { NewBillPage } from '@/pages/NewBill';
 import { BillHistoryPage } from '@/pages/BillHistory';
 import { BillPrintPage } from '@/pages/BillPrint';
@@ -27,9 +28,15 @@ import { PurchaseReportPage } from '@/pages/reports/PurchaseReport';
 import { OutstandingReportPage } from '@/pages/reports/OutstandingReport';
 import { PurchasesPage } from '@/pages/Purchases';
 import { useCapacitorApp } from '@/hooks/useCapacitorApp';
+import { useSessionBootstrap } from '@/hooks/useSessionBootstrap';
 
 function CapacitorInit() {
   useCapacitorApp();
+  return null;
+}
+
+function SessionInit() {
+  useSessionBootstrap();
   return null;
 }
 
@@ -37,6 +44,7 @@ export default function App() {
   return (
     <>
       <CapacitorInit />
+      <SessionInit />
       <Routes>
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
@@ -66,6 +74,7 @@ export default function App() {
           <Route path="/reports/outstanding" element={<OutstandingReportPage />} />
 
           <Route path="/settings/shop" element={<RoleRoute allow={['owner']}><ShopProfilePage /></RoleRoute>} />
+          <Route path="/admin/shops" element={<RoleRoute allow={['owner']}><ShopManagementPage /></RoleRoute>} />
           <Route path="/admin/supervisors" element={<RoleRoute allow={['owner']}><SupervisorsPage /></RoleRoute>} />
           <Route path="/admin/permissions" element={<RoleRoute allow={['owner']}><PermissionsPage /></RoleRoute>} />
           <Route path="/settings/bill" element={<RoleRoute allow={['owner']}><BillSettingsPage /></RoleRoute>} />
