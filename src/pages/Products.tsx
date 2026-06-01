@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   Plus, Upload, Download, Pencil, Trash2, History,
-  Search, X, Package, MoreVertical, SlidersHorizontal,
+  Search, X, Package, MoreVertical, SlidersHorizontal, Trash,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/axios';
@@ -50,6 +50,7 @@ export function ProductsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [ledgerProduct, setLedgerProduct] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
+  const [permanentDeleting, setPermanentDeleting] = useState<Product | null>(null);
   const [moreMenuId, setMoreMenuId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -76,6 +77,18 @@ export function ProductsPage() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: () => toast.error('Failed to delete'),
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: async (id: string) => api.delete(`/products/${id}?permanent=true`),
+    onSuccess: (_, id) => {
+      const product = data?.data.find((p) => p.id === id);
+      toast.success('Product permanently deleted');
+      notify('Product Deleted', product ? `${product.name} has been permanently deleted` : 'Product permanently deleted');
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
+    onError: () => toast.error('Failed to permanently delete'),
   });
 
   const importMutation = useMutation({
@@ -253,6 +266,7 @@ export function ProductsPage() {
                         <Button variant="ghost" size="icon" title="Stock history" onClick={() => setLedgerProduct(p)}><History className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" title="Edit" onClick={() => { setEditing(p); setSheetOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" title="Deactivate" onClick={() => setDeleting(p)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                        <Button variant="ghost" size="icon" title="Delete permanently" onClick={() => setPermanentDeleting(p)}><Trash className="h-4 w-4 text-red-600" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -327,6 +341,9 @@ export function ProductsPage() {
                           <button onClick={() => { setDeleting(p); setMoreMenuId(null); }} className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
                             <Trash2 className="h-4 w-4" /> Deactivate
                           </button>
+                          <button onClick={() => { setPermanentDeleting(p); setMoreMenuId(null); }} className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50">
+                            <Trash className="h-4 w-4" /> Delete permanently
+                          </button>
                         </div>
                       )}
                     </div>
@@ -382,6 +399,13 @@ export function ProductsPage() {
         description="The product will be hidden from new bills but historical sales stay intact. You can re-activate it later."
         confirmLabel="Deactivate" destructive loading={deleteMutation.isPending}
         onConfirm={() => { if (deleting) deleteMutation.mutate(deleting.id, { onSettled: () => setDeleting(null) }); }}
+      />
+      <ConfirmDialog
+        open={!!permanentDeleting} onOpenChange={(v) => !v && setPermanentDeleting(null)}
+        title={`Permanently delete "${permanentDeleting?.name ?? ''}"?`}
+        description="This removes the product and its stock history for good and cannot be undone. Historical bills are preserved."
+        confirmLabel="Delete permanently" destructive loading={permanentDeleteMutation.isPending}
+        onConfirm={() => { if (permanentDeleting) permanentDeleteMutation.mutate(permanentDeleting.id, { onSettled: () => setPermanentDeleting(null) }); }}
       />
     </div>
   );
