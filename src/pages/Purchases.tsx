@@ -1,21 +1,15 @@
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
-  Eye, IndianRupee, Pencil, Plus, ShoppingCart, TrendingDown, Wallet,
+  Eye, Pencil, Plus, ShoppingCart, Wallet,
   ChevronDown, ChevronUp, SlidersHorizontal,
+  CheckCircle2, Clock, AlertCircle,
 } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table,
   TableHeader,
@@ -30,15 +24,17 @@ import { NewPurchaseDialog } from '@/components/inventory/NewPurchaseDialog';
 import { PurchaseDetailSheet } from '@/components/inventory/PurchaseDetailSheet';
 import { EditPurchaseDialog } from '@/components/inventory/EditPurchaseDialog';
 import { PurchasePayDialog } from '@/components/inventory/PurchasePayDialog';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import type { Pagination, Purchase } from '@/types';
 
-const STATUS_CHIPS = [
-  { label: 'All', value: 'all' },
-  { label: 'Paid', value: 'paid' },
-  { label: 'Partial', value: 'partial' },
-  { label: 'Unpaid', value: 'unpaid' },
-] as const;
+interface PurchaseSummary {
+  all: number;
+  paid: number;
+  partial: number;
+  unpaid: number;
+  total_amount: number;
+  outstanding: number;
+}
 
 export function PurchasesPage() {
   const [newOpen, setNewOpen] = useState(false);
@@ -54,7 +50,7 @@ export function PurchasesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['purchases', { page, paymentStatus, fromDate, toDate }],
     queryFn: async () => {
-      const res = await api.get<{ data: Purchase[]; pagination: Pagination }>('/purchases', {
+      const res = await api.get<{ data: Purchase[]; summary: PurchaseSummary; pagination: Pagination }>('/purchases', {
         params: {
           page,
           page_size: 25,
@@ -70,9 +66,13 @@ export function PurchasesPage() {
 
   const purchases = data?.data ?? [];
   const pagination = data?.pagination;
+  const summary = data?.summary;
 
-  const pageTotal = purchases.reduce((s, p) => s + Number(p.total_amount), 0);
-  const pageUnpaid = purchases.filter((p) => p.payment_status !== 'paid').length;
+  // Toggle a payment-status filter from the head cards (click active card to clear).
+  const setStatus = (s: 'all' | 'paid' | 'unpaid' | 'partial') => {
+    setPaymentStatus((cur) => (s !== 'all' && cur === s ? 'all' : s));
+    setPage(1);
+  };
 
   function statusVariant(status: string) {
     if (status === 'paid') return 'success';
@@ -102,51 +102,31 @@ export function PurchasesPage() {
         <p className="text-xs text-slate-500 mt-0.5">Stock IN from suppliers</p>
       </div>
 
-      {/* ── Stats strip ── */}
+      {/* ── Filter cards (head) ── */}
       <div className="flex-shrink-0 px-4 lg:px-6 pt-3 pb-2">
-        <div className="grid grid-cols-3 gap-2 lg:gap-3">
-          <MobileStat label="Total" value={pagination?.total ?? '—'} icon={<ShoppingCart className="h-3.5 w-3.5" />} />
-          <MobileStat label="Page Total" value={formatCurrency(pageTotal)} icon={<IndianRupee className="h-3.5 w-3.5" />} />
-          <MobileStat
-            label="Unpaid"
-            value={pageUnpaid}
-            icon={<TrendingDown className="h-3.5 w-3.5" />}
-            color={pageUnpaid > 0 ? 'danger' : 'slate'}
-          />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3">
+          <StatCard label="All" value={summary?.all ?? pagination?.total ?? '—'} icon={ShoppingCart} active={paymentStatus === 'all'} onClick={() => setStatus('all')} />
+          <StatCard label="Paid" value={summary?.paid ?? '—'} icon={CheckCircle2} tone="success" active={paymentStatus === 'paid'} onClick={() => setStatus('paid')} />
+          <StatCard label="Partial" value={summary?.partial ?? '—'} icon={Clock} tone="warning" active={paymentStatus === 'partial'} onClick={() => setStatus('partial')} />
+          <StatCard label="Unpaid" value={summary?.unpaid ?? '—'} icon={AlertCircle} tone="danger" active={paymentStatus === 'unpaid'} onClick={() => setStatus('unpaid')} />
         </div>
       </div>
 
-      {/* ── Mobile filters ── */}
+      {/* ── Mobile date filter ── */}
       <div className="lg:hidden flex-shrink-0 px-4 pb-2 space-y-2">
-        {/* Status chips */}
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-          {STATUS_CHIPS.map((c) => (
-            <button
-              key={c.value}
-              onClick={() => { setPaymentStatus(c.value); setPage(1); }}
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors active:scale-95 ${
-                paymentStatus === c.value
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-white border border-slate-200 text-slate-600'
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-          <button
-            onClick={() => setFiltersOpen(v => !v)}
-            className={`shrink-0 flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              filtersOpen || fromDate || toDate
-                ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
-                : 'border-slate-200 bg-white text-slate-600'
-            }`}
-          >
-            <SlidersHorizontal className="h-3 w-3" />
-            Date
-            {filtersOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-          <div className="w-2 shrink-0" />
-        </div>
+        <button
+          onClick={() => setFiltersOpen(v => !v)}
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+            filtersOpen || fromDate || toDate
+              ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+              : 'border-slate-200 bg-white text-slate-600'
+          }`}
+        >
+          <SlidersHorizontal className="h-3 w-3" />
+          Date filter
+          {(fromDate || toDate) && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+          {filtersOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
 
         {filtersOpen && (
           <div className="flex gap-2">
@@ -282,57 +262,16 @@ export function PurchasesPage() {
       </button>
 
       {/* ── Desktop layout ── */}
-      <div className="hidden lg:flex flex-col flex-1 min-h-0 p-6 pt-4 gap-4 overflow-hidden">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 flex-shrink-0">
-          <Card>
-            <CardContent className="p-4 flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                <ShoppingCart className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500">Purchases shown</div>
-                <div className="mt-0.5 text-xl font-bold text-slate-900">{pagination?.total ?? '—'}</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                <IndianRupee className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500">Page total</div>
-                <div className="mt-0.5 text-xl font-bold text-slate-900">{formatCurrency(pageTotal)}</div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                <TrendingDown className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-slate-500">Unpaid on page</div>
-                <div className={`mt-0.5 text-xl font-bold ${pageUnpaid > 0 ? 'text-red-600' : 'text-slate-900'}`}>{pageUnpaid}</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
+      <div className="hidden lg:flex flex-col flex-1 min-h-0 p-6 pt-3 gap-4 overflow-hidden">
         <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <CardContent className="p-4 flex flex-col h-full overflow-hidden gap-3">
-            <div className="flex flex-wrap gap-2 flex-shrink-0">
-              <Select value={paymentStatus} onValueChange={(v) => { setPaymentStatus(v as typeof paymentStatus); setPage(1); }}>
-                <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="partial">Partial</SelectItem>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+              <span className="text-xs font-medium text-slate-500">Date:</span>
               <Input type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setPage(1); }} className="w-full sm:w-40" placeholder="From date" />
               <Input type="date" value={toDate} onChange={(e) => { setToDate(e.target.value); setPage(1); }} className="w-full sm:w-40" placeholder="To date" />
+              {(fromDate || toDate) && (
+                <Button variant="ghost" size="sm" className="text-slate-500" onClick={() => { setFromDate(''); setToDate(''); setPage(1); }}>Clear</Button>
+              )}
             </div>
 
             <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-slate-100">
@@ -414,25 +353,54 @@ export function PurchasesPage() {
   );
 }
 
-function MobileStat({
+function StatCard({
   label,
   value,
-  icon,
-  color = 'slate',
+  icon: Icon,
+  tone = 'slate',
+  active = false,
+  onClick,
 }: {
   label: string;
   value: string | number;
-  icon?: React.ReactNode;
-  color?: 'slate' | 'danger';
+  icon?: React.ComponentType<{ className?: string }>;
+  tone?: 'slate' | 'success' | 'warning' | 'danger';
+  active?: boolean;
+  onClick?: () => void;
 }) {
-  const textColor = color === 'danger' ? 'text-red-600' : 'text-slate-900';
+  const text =
+    tone === 'danger' ? 'text-red-600'
+    : tone === 'warning' ? 'text-amber-600'
+    : tone === 'success' ? 'text-emerald-600'
+    : 'text-slate-900';
+  const chip =
+    tone === 'danger' ? 'bg-red-50 text-red-500'
+    : tone === 'warning' ? 'bg-amber-50 text-amber-600'
+    : tone === 'success' ? 'bg-emerald-50 text-emerald-600'
+    : 'bg-slate-100 text-slate-500';
+  const ring =
+    tone === 'danger' ? 'ring-red-400/70'
+    : tone === 'warning' ? 'ring-amber-400/70'
+    : tone === 'success' ? 'ring-emerald-400/70'
+    : 'ring-slate-400/70';
   return (
-    <div className="rounded-xl bg-white border border-slate-100 p-3 shadow-sm">
-      <div className="flex items-center gap-1.5 text-slate-400">
-        {icon}
-        <p className="text-[10px] uppercase tracking-wide font-medium">{label}</p>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-xl bg-white border border-slate-100 p-2.5 shadow-sm text-left transition-all active:scale-[0.98] hover:shadow-md',
+        active && `ring-2 ring-inset ${ring}`,
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium truncate">{label}</p>
+        {Icon && (
+          <div className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-md', chip)}>
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+        )}
       </div>
-      <p className={`mt-1 text-base font-bold ${textColor} leading-none`}>{value}</p>
-    </div>
+      <p className={`mt-1 text-lg font-bold leading-none ${text}`}>{value}</p>
+    </button>
   );
 }

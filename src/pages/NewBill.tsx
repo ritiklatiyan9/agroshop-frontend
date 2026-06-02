@@ -51,6 +51,11 @@ function uid() {
   return Math.random().toString(36).slice(2);
 }
 
+function amountInputValue(value: number) {
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+}
+
 interface Props {
   billType: BillType;
 }
@@ -76,6 +81,7 @@ export function NewBillPage({ billType }: Props) {
     (shop?.default_payment_mode as BillPaymentMode) || 'cash',
   );
   const [paidInput, setPaidInput] = useState('');
+  const [paidTouched, setPaidTouched] = useState(false);
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -114,12 +120,22 @@ export function NewBillPage({ billType }: Props) {
     [calcItems, discountAmount, billType, gstBeforeDiscount],
   );
 
-  const paidAmount = Number(paidInput) || 0;
+  const paidAmount = Math.max(0, Number(paidInput) || 0);
   const balance = Math.max(0, summary.grand_total - paidAmount);
   const addedIds = useMemo(
     () => new Set(items.filter((i) => i.product_id).map((i) => i.product_id as string)),
     [items],
   );
+
+  useEffect(() => {
+    if (paymentMode === 'credit') {
+      if (paidInput !== '0') setPaidInput('0');
+      return;
+    }
+    if (paidTouched) return;
+    const next = summary.grand_total > 0 ? amountInputValue(summary.grand_total) : '';
+    if (paidInput !== next) setPaidInput(next);
+  }, [paidInput, paidTouched, paymentMode, summary.grand_total]);
 
   function addProduct(p: Product) {
     const existing = items.find((i) => i.product_id === p.id);
@@ -149,6 +165,32 @@ export function NewBillPage({ billType }: Props) {
 
   function removeLine(uidKey: string) {
     setItems((rows) => rows.filter((r) => r.uid !== uidKey));
+  }
+
+  function handlePaymentModeChange(next: BillPaymentMode) {
+    setPaymentMode(next);
+    if (next === 'credit') {
+      setPaidTouched(true);
+      setPaidInput('0');
+      return;
+    }
+    setPaidTouched(false);
+    setPaidInput(summary.grand_total > 0 ? amountInputValue(summary.grand_total) : '');
+  }
+
+  function handlePaidInputChange(value: string) {
+    setPaidTouched(true);
+    const amount = Number(value) || 0;
+    if (amount > summary.grand_total + 0.01) {
+      setPaidInput(amountInputValue(summary.grand_total));
+      return;
+    }
+    setPaidInput(value);
+  }
+
+  function payFull() {
+    setPaidTouched(true);
+    setPaidInput(amountInputValue(summary.grand_total));
   }
 
   const mutation = useMutation({
@@ -755,7 +797,7 @@ export function NewBillPage({ billType }: Props) {
                 </Label>
                 <Select
                   value={paymentMode}
-                  onValueChange={(v) => setPaymentMode(v as BillPaymentMode)}
+                  onValueChange={(v) => handlePaymentModeChange(v as BillPaymentMode)}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
@@ -771,14 +813,14 @@ export function NewBillPage({ billType }: Props) {
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">
-                  Amount paid
+                  Received
                 </Label>
                 <div className="flex gap-1">
                   <Input
                     type="number"
                     step="0.01"
                     value={paidInput}
-                    onChange={(e) => setPaidInput(e.target.value)}
+                    onChange={(e) => handlePaidInputChange(e.target.value)}
                     className="text-right tabular-nums h-8 text-xs"
                     disabled={isCredit}
                     placeholder={isCredit ? 'Credit' : '0'}
@@ -787,7 +829,7 @@ export function NewBillPage({ billType }: Props) {
                     variant="outline"
                     size="sm"
                     type="button"
-                    onClick={() => setPaidInput(String(summary.grand_total))}
+                    onClick={payFull}
                     className="h-8 px-2 text-xs shrink-0"
                     disabled={summary.grand_total === 0 || isCredit}
                   >
@@ -836,6 +878,68 @@ export function NewBillPage({ billType }: Props) {
             </button>
           </div>
         </aside>
+      </div>
+
+      <div className="lg:hidden flex-shrink-0 border-t border-slate-200 bg-white px-3 py-2.5 shadow-[0_-8px_18px_rgba(15,23,42,0.08)]">
+        <div className="grid grid-cols-[minmax(0,1fr)_9.5rem] items-end gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Grand total
+            </div>
+            <div className="truncate text-xl font-bold tabular-nums text-slate-900">
+              {formatCurrency(summary.grand_total)}
+            </div>
+            <div
+              className={cn(
+                'truncate text-[11px] font-semibold',
+                balance > 0 ? 'text-amber-700' : 'text-emerald-700',
+              )}
+            >
+              Balance due {formatCurrency(balance)}
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Received
+            </Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={paidInput}
+              onChange={(e) => handlePaidInputChange(e.target.value)}
+              className="h-10 text-right text-sm tabular-nums"
+              disabled={isCredit || mutation.isPending}
+              placeholder={isCredit ? 'Credit' : '0'}
+            />
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            onClick={() => handleSave(false)}
+            disabled={mutation.isPending || items.length === 0}
+            className="h-9"
+          >
+            {mutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save
+          </Button>
+          <Button
+            onClick={() => handleSave(true)}
+            disabled={mutation.isPending || items.length === 0}
+            className="h-9"
+          >
+            {mutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Printer className="mr-2 h-4 w-4" />
+            )}
+            Save & Print
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { App } from '@capacitor/app';
 import { initFCM, savePendingFcmToken } from '@/lib/fcm';
 import { useAuthStore } from '@/store/authStore';
 
-const ROOT_ROUTES = new Set(['/dashboard', '/login', '/register']);
+const ROOT_ROUTES = new Set(['/dashboard', '/login']);
 
 export function useCapacitorApp() {
   const navigate = useNavigate();

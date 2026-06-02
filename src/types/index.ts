@@ -167,6 +167,7 @@ export interface InventoryRow {
   unit: ProductUnit;
   category: { id: string; name: string } | null;
   current_stock: string;
+  sold_stock: string;
   min_stock_level: string;
   purchase_price: string;
   selling_price: string;
@@ -185,6 +186,10 @@ export interface Purchase {
   party?: { id: string; name: string };
   purchase_date: string;
   invoice_number: string | null;
+  gst_enabled?: boolean;
+  subtotal?: string;
+  cgst_total?: string;
+  sgst_total?: string;
   total_amount: string;
   paid_amount: string;
   payment_status: 'paid' | 'unpaid' | 'partial';
@@ -198,8 +203,12 @@ export interface Purchase {
     product?: { id: string; name: string; unit: ProductUnit };
     quantity: string;
     rate: string;
+    gst_rate?: string;
     batch_number: string | null;
     expiry_date: string | null;
+    taxable_amount?: string;
+    cgst_amount?: string;
+    sgst_amount?: string;
     total_amount: string;
   }>;
   created_at: string;

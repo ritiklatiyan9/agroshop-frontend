@@ -3,6 +3,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   History, Plus, Settings2, Eye, Search, X,
   ArrowDownLeft, ArrowUpRight, Package, ChevronDown, ChevronUp,
+  Boxes, IndianRupee, AlertTriangle, CalendarClock, ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,12 +47,17 @@ export function InventoryPage({ initialTab = 'stock' }: Props) {
   const [fabOpen, setFabOpen] = useState(false);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden bg-slate-50/60">
       {/* ── Desktop header ── */}
-      <div className="hidden lg:flex flex-shrink-0 flex-wrap items-start justify-between gap-3 px-6 pt-6 pb-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Inventory</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Current stock, movements, and purchases.</p>
+      <div className="hidden lg:flex flex-shrink-0 flex-wrap items-center justify-between gap-3 px-6 pt-6 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-sm">
+            <Boxes className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Inventory</h1>
+            <p className="mt-0.5 text-sm text-slate-500">Current stock, movements, and purchases.</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setAdjustOpen(true)}>
@@ -182,6 +188,7 @@ function CurrentStock({
   onAdjustProduct: (p: { id: string; name: string }) => void;
 }) {
   const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'low' | 'expiring'>('all');
 
   const { data, isLoading } = useQuery({
     queryKey: ['inventory'],
@@ -193,30 +200,53 @@ function CurrentStock({
 
   const filtered = useMemo(() => {
     if (!data?.data) return [];
-    if (!search.trim()) return data.data;
-    const q = search.toLowerCase();
-    return data.data.filter(
-      (r) => r.name.toLowerCase().includes(q) || r.category?.name?.toLowerCase().includes(q),
-    );
-  }, [data, search]);
+    let rows = data.data;
+    if (filter === 'low') {
+      rows = rows.filter((r) => r.is_low_stock);
+    } else if (filter === 'expiring') {
+      rows = rows.filter((r) => r.expiry_status === 'expiring_soon' || r.expiry_status === 'expired');
+    }
+    const q = search.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter(
+        (r) => r.name.toLowerCase().includes(q) || r.category?.name?.toLowerCase().includes(q),
+      );
+    }
+    return rows;
+  }, [data, search, filter]);
+
+  // Toggle a card filter on/off
+  const toggle = (f: 'low' | 'expiring') => setFilter((cur) => (cur === f ? 'all' : f));
 
   return (
     <div className="h-full flex flex-col gap-3 overflow-hidden">
       {/* ── Desktop stats ── */}
       <div className="hidden lg:grid grid-cols-4 gap-3 flex-shrink-0">
-        <SummaryCard label="Total products" value={data?.summary.total_products ?? '—'} />
-        <SummaryCard label="Total stock value" value={data ? formatCurrency(Number(data.summary.total_stock_value)) : '—'} />
-        <SummaryCard label="Low stock items" value={data?.summary.low_stock_items ?? '—'} variant={Number(data?.summary.low_stock_items) > 0 ? 'danger' : 'default'} />
-        <SummaryCard label="Expiring soon" value={data?.summary.expiring_soon ?? '—'} variant={Number(data?.summary.expiring_soon) > 0 ? 'warning' : 'default'} />
+        <SummaryCard label="Total products" value={data?.summary.total_products ?? '—'} icon={Boxes} active={filter === 'all'} onClick={() => setFilter('all')} hint="Show all" />
+        <SummaryCard label="Total stock value" value={data ? formatCurrency(Number(data.summary.total_stock_value)) : '—'} icon={IndianRupee} onClick={() => setFilter('all')} />
+        <SummaryCard label="Low stock items" value={data?.summary.low_stock_items ?? '—'} icon={AlertTriangle} variant={Number(data?.summary.low_stock_items) > 0 ? 'danger' : 'default'} active={filter === 'low'} onClick={() => toggle('low')} hint="Filter" />
+        <SummaryCard label="Expiring soon" value={data?.summary.expiring_soon ?? '—'} icon={CalendarClock} variant={Number(data?.summary.expiring_soon) > 0 ? 'warning' : 'default'} active={filter === 'expiring'} onClick={() => toggle('expiring')} hint="Filter" />
       </div>
 
       {/* ── Mobile stats ── */}
       <div className="lg:hidden grid grid-cols-2 gap-2 flex-shrink-0">
-        <MobileStatCard label="Products" value={data?.summary.total_products ?? '—'} />
-        <MobileStatCard label="Stock Value" value={data ? formatCurrency(Number(data.summary.total_stock_value)) : '—'} />
-        <MobileStatCard label="Low Stock" value={data?.summary.low_stock_items ?? '—'} variant={Number(data?.summary.low_stock_items) > 0 ? 'danger' : 'default'} />
-        <MobileStatCard label="Expiring Soon" value={data?.summary.expiring_soon ?? '—'} variant={Number(data?.summary.expiring_soon) > 0 ? 'warning' : 'default'} />
+        <MobileStatCard label="Products" value={data?.summary.total_products ?? '—'} icon={Boxes} active={filter === 'all'} onClick={() => setFilter('all')} />
+        <MobileStatCard label="Stock Value" value={data ? formatCurrency(Number(data.summary.total_stock_value)) : '—'} icon={IndianRupee} onClick={() => setFilter('all')} />
+        <MobileStatCard label="Low Stock" value={data?.summary.low_stock_items ?? '—'} icon={AlertTriangle} variant={Number(data?.summary.low_stock_items) > 0 ? 'danger' : 'default'} active={filter === 'low'} onClick={() => toggle('low')} />
+        <MobileStatCard label="Expiring Soon" value={data?.summary.expiring_soon ?? '—'} icon={CalendarClock} variant={Number(data?.summary.expiring_soon) > 0 ? 'warning' : 'default'} active={filter === 'expiring'} onClick={() => toggle('expiring')} />
       </div>
+
+      {/* ── Active filter indicator ── */}
+      {filter !== 'all' && (
+        <div className="flex items-center gap-2 flex-shrink-0 -mt-1">
+          <Badge variant={filter === 'low' ? 'danger' : 'warning'}>
+            {filter === 'low' ? 'Low stock only' : 'Expiring soon only'}
+          </Badge>
+          <button onClick={() => setFilter('all')} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
+            <X className="h-3 w-3" /> Clear filter
+          </button>
+        </div>
+      )}
 
       {/* ── Mobile search ── */}
       <div className="lg:hidden relative flex-shrink-0">
@@ -236,43 +266,74 @@ function CurrentStock({
 
       {/* ── Desktop table ── */}
       <Card className="hidden lg:flex flex-1 min-h-0 flex-col overflow-hidden">
-        <CardContent className="p-4 flex flex-col h-full overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-slate-100">
-            <Table>
+        <CardContent className="p-4 flex flex-col h-full overflow-hidden gap-3">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between gap-3 flex-shrink-0">
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search products or category…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-9 h-9 bg-slate-50/70 border-slate-200"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Package className="h-3.5 w-3.5" />
+              <span><span className="font-semibold text-slate-700">{filtered.length}</span> shown</span>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-slate-200/70">
+            <Table className="[&_td]:px-3 [&_td]:py-1.5 [&_th]:h-9 [&_th]:px-3">
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 [&>th]:sticky [&>th]:top-0 [&>th]:bg-slate-50/95 [&>th]:backdrop-blur [&>th]:z-10 [&>th]:text-[11px] [&>th]:uppercase [&>th]:tracking-wide">
                   <TableHead>Product</TableHead>
-                  <TableHead className="hidden md:table-cell">Category</TableHead>
-                  <TableHead className="hidden sm:table-cell">Unit</TableHead>
-                  <TableHead className="text-right">In stock</TableHead>
-                  <TableHead className="hidden md:table-cell text-right">Min level</TableHead>
-                  <TableHead className="hidden sm:table-cell text-right">Stock value</TableHead>
-                  <TableHead className="hidden lg:table-cell">Expiry</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Current</TableHead>
+                  <TableHead className="text-right">Sold</TableHead>
+                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead>Expiry</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right w-20"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading && [...Array(8)].map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={9}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-7 w-full" /></TableCell></TableRow>
                 ))}
                 {!isLoading && filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={9} className="text-center py-10 text-slate-500">No products in inventory.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-10 text-slate-500">{filter !== 'all' ? 'No products match this filter.' : 'No products in inventory.'}</TableCell></TableRow>
                 )}
                 {filtered.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium text-slate-900">{r.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">{r.category?.name || '—'}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{r.unit}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(r.current_stock, 2)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right font-mono text-slate-500">{formatNumber(r.min_stock_level, 2)}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-right font-mono">{formatCurrency(r.stock_value)}</TableCell>
-                    <TableCell className="hidden lg:table-cell"><ExpiryBadge date={r.expiry_date} /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><LowStockBadge current={r.current_stock} min={r.min_stock_level} /></TableCell>
+                  <TableRow key={r.id} className="group transition-colors hover:bg-emerald-50/40">
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" title="View ledger" onClick={() => onOpenLedger(r)}><History className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" title="Adjust stock" onClick={() => onAdjustProduct(r)}><Settings2 className="h-4 w-4" /></Button>
+                      <div className="flex items-center gap-2.5">
+                        <ProductAvatar name={r.name} imageUrl={r.image_url} />
+                        <div className="min-w-0">
+                          <div className="font-medium text-slate-900 truncate leading-tight">{r.name}</div>
+                          {r.brand && <div className="text-[11px] text-slate-400 truncate leading-tight">{r.brand}</div>}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-slate-600">{r.category?.name || '—'}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <span className="font-mono font-semibold text-slate-900">{formatNumber(r.current_stock, 2)}</span>
+                      <span className="ml-1 text-[11px] text-slate-400">{r.unit}</span>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-slate-500 whitespace-nowrap">{formatNumber(r.sold_stock, 2)}</TableCell>
+                    <TableCell className="text-right font-mono text-slate-700 whitespace-nowrap">{formatCurrency(r.stock_value)}</TableCell>
+                    <TableCell className="whitespace-nowrap"><ExpiryBadge date={r.expiry_date} /></TableCell>
+                    <TableCell><LowStockBadge current={r.current_stock} min={r.min_stock_level} /></TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-0.5 opacity-60 transition-opacity group-hover:opacity-100">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="View ledger" onClick={() => onOpenLedger(r)}><History className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Adjust stock" onClick={() => onAdjustProduct(r)}><Settings2 className="h-3.5 w-3.5" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -312,6 +373,7 @@ function CurrentStock({
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-semibold text-slate-900 text-sm leading-tight truncate">{r.name}</p>
                     <div className="flex-shrink-0 text-right">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wide mr-1">Current</span>
                       <span className="font-bold text-slate-900 font-mono text-sm">{formatNumber(r.current_stock, 2)}</span>
                       <span className="text-[11px] text-slate-400 ml-1">{r.unit}</span>
                     </div>
@@ -319,7 +381,11 @@ function CurrentStock({
                   {/* Row 2 */}
                   <div className="flex items-center justify-between mt-0.5">
                     <span className="text-[11px] text-slate-400">{r.category?.name || 'Uncategorised'}</span>
-                    <span className="text-[11px] text-slate-500 font-mono">{formatCurrency(r.stock_value)}</span>
+                    <span className="text-[11px] text-slate-500">
+                      Sold <span className="font-mono text-slate-600">{formatNumber(r.sold_stock, 2)}</span>
+                      <span className="mx-1.5 text-slate-300">·</span>
+                      <span className="font-mono">{formatCurrency(r.stock_value)}</span>
+                    </span>
                   </div>
                   {/* Row 3 */}
                   <div className="flex items-center justify-between mt-2">
@@ -724,24 +790,83 @@ function Purchases({ onNew, onView }: { onNew: () => void; onView: (id: string) 
 /* ─────────────────────────────────────────────
    SHARED COMPONENTS
 ───────────────────────────────────────────── */
-function SummaryCard({ label, value, variant = 'default' }: { label: string; value: string | number; variant?: 'default' | 'danger' | 'warning' }) {
-  const color = variant === 'danger' ? 'text-red-600' : variant === 'warning' ? 'text-amber-600' : 'text-slate-900';
+type StatTone = 'default' | 'danger' | 'warning';
+type IconType = React.ComponentType<{ className?: string }>;
+
+const TONE = {
+  default: { text: 'text-slate-900', ring: 'ring-emerald-400/70', chip: 'bg-emerald-50 text-emerald-600' },
+  danger: { text: 'text-red-600', ring: 'ring-red-400/70', chip: 'bg-red-50 text-red-500' },
+  warning: { text: 'text-amber-600', ring: 'ring-amber-400/70', chip: 'bg-amber-50 text-amber-600' },
+} as const;
+
+function ProductAvatar({ name, imageUrl }: { name: string; imageUrl: string | null }) {
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={name}
+        className="h-7 w-7 rounded-md object-cover border border-slate-200 flex-shrink-0"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+      />
+    );
+  }
   return (
-    <Card><CardContent className="p-4">
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`mt-1 text-2xl font-bold ${color}`}>{value}</div>
-    </CardContent></Card>
+    <div className="h-7 w-7 rounded-md bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700 flex items-center justify-center font-semibold text-xs flex-shrink-0">
+      {name.trim().charAt(0).toUpperCase() || '?'}
+    </div>
   );
 }
 
-function MobileStatCard({ label, value, variant = 'default' }: { label: string; value: string | number; variant?: 'default' | 'danger' | 'warning' }) {
-  const color = variant === 'danger' ? 'text-red-600' : variant === 'warning' ? 'text-amber-600' : 'text-slate-900';
+function SummaryCard({ label, value, variant = 'default', active = false, onClick, icon: Icon, hint }: { label: string; value: string | number; variant?: StatTone; active?: boolean; onClick?: () => void; icon?: IconType; hint?: string }) {
+  const tone = TONE[variant];
+  return (
+    <Card
+      onClick={onClick}
+      className={cn(
+        'group flex items-center gap-3 p-3',
+        onClick && 'cursor-pointer transition-shadow hover:shadow-md',
+        active && `ring-2 ring-inset ${tone.ring}`,
+      )}
+    >
+      {Icon && (
+        <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', tone.chip)}>
+          <Icon className="h-4 w-4" />
+        </div>
+      )}
+      <div className="min-w-0">
+        <div className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-slate-500">
+          <span className="truncate">{label}</span>
+          {active && <span className="text-slate-400 normal-case tracking-normal">· on</span>}
+          {!active && hint && onClick && <ChevronRight className="h-3 w-3 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />}
+        </div>
+        <div className={cn('text-lg font-bold leading-tight', tone.text)}>{value}</div>
+      </div>
+    </Card>
+  );
+}
+
+function MobileStatCard({ label, value, variant = 'default', active = false, onClick, icon: Icon }: { label: string; value: string | number; variant?: StatTone; active?: boolean; onClick?: () => void; icon?: IconType }) {
+  const tone = TONE[variant];
   const bg = variant === 'danger' ? 'bg-red-50 border-red-100' : variant === 'warning' ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-100';
   return (
-    <div className={`rounded-xl border p-3 ${bg}`}>
-      <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">{label}</p>
-      <p className={`text-xl font-bold mt-0.5 ${color}`}>{value}</p>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        `rounded-xl border p-2.5 text-left transition-all active:scale-[0.98] ${bg}`,
+        active && `ring-2 ring-inset ${tone.ring}`,
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">{label}</p>
+        {Icon && (
+          <div className={cn('flex h-6 w-6 items-center justify-center rounded-md', tone.chip)}>
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+        )}
+      </div>
+      <p className={`text-lg font-bold mt-0.5 ${tone.text}`}>{value}</p>
+    </button>
   );
 }
 

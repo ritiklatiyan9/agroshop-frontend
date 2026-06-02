@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Shield, Loader2, Info, Store } from 'lucide-react';
 import { api } from '@/lib/axios';
-import { useCurrentShop } from '@/store/authStore';
+import { useAuthStore, useCurrentShop } from '@/store/authStore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -44,6 +44,19 @@ export function PermissionsPage() {
   const [isDirty, setIsDirty] = useState(false);
   const queryClient = useQueryClient();
   const currentShop = useCurrentShop();
+  const shops = useAuthStore((s) => s.shops);
+
+  // The shop whose permissions we're editing — independent of the global shop switcher.
+  const [permShopId, setPermShopId] = useState<string | null>(currentShop?.id ?? null);
+
+  // Default to the current shop (or first available) once shops are loaded.
+  useEffect(() => {
+    if (!permShopId && shops.length) {
+      setPermShopId(currentShop?.id ?? shops[0].id);
+    }
+  }, [permShopId, shops, currentShop]);
+
+  const permShop = shops.find((s) => s.id === permShopId) ?? null;
 
   const { data: supervisors = [], isLoading: supervisorsLoading } = useQuery({
     queryKey: ['supervisors'],
@@ -54,28 +67,30 @@ export function PermissionsPage() {
   });
 
   const { isLoading: permsLoading } = useQuery({
-    queryKey: ['supervisor-permissions', selectedSupervisorId, currentShop?.id],
+    queryKey: ['supervisor-permissions', selectedSupervisorId, permShopId],
     queryFn: async () => {
       const res = await api.get<{ data: ModulePermission[] }>(
         `/users/supervisors/${selectedSupervisorId}/permissions`,
+        { params: { shop_id: permShopId ?? undefined } },
       );
       setLocalPerms(res.data.data);
       setIsDirty(false);
       return res.data.data;
     },
-    enabled: !!selectedSupervisorId,
+    enabled: !!selectedSupervisorId && !!permShopId,
   });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       await api.put(`/users/supervisors/${selectedSupervisorId}/permissions`, {
         permissions: localPerms,
+        shop_id: permShopId,
       });
     },
     onSuccess: () => {
-      toast.success('Permissions saved');
+      toast.success(`Permissions saved${permShop ? ` for ${permShop.name}` : ''}`);
       setIsDirty(false);
-      queryClient.invalidateQueries({ queryKey: ['supervisor-permissions', selectedSupervisorId] });
+      queryClient.invalidateQueries({ queryKey: ['supervisor-permissions', selectedSupervisorId, permShopId] });
     },
     onError: () => toast.error('Failed to save permissions'),
   });
@@ -84,6 +99,17 @@ export function PermissionsPage() {
     setSelectedSupervisorId(id);
     setLocalPerms(null);
     setIsDirty(false);
+  }
+
+  function handleShopChange(id: string) {
+    setPermShopId(id);
+    setLocalPerms(null);
+    setIsDirty(false);
+    // Drop the supervisor selection if they're not assigned to the newly chosen shop.
+    const sup = supervisors.find((s) => s.id === selectedSupervisorId);
+    if (sup && !sup.shop_ids.includes(id)) {
+      setSelectedSupervisorId(null);
+    }
   }
 
   function togglePerm(
@@ -125,7 +151,7 @@ export function PermissionsPage() {
 
   const selectedSupervisor = supervisors.find((s) => s.id === selectedSupervisorId);
   const activeSupervisors = supervisors.filter(
-    (s) => s.is_active && (!currentShop || s.shop_ids.includes(currentShop.id)),
+    (s) => s.is_active && (!permShopId || s.shop_ids.includes(permShopId)),
   );
 
   const grouped = GROUP_ORDER.map((group) => ({
@@ -138,11 +164,11 @@ export function PermissionsPage() {
       <div className="flex-shrink-0">
         <PageHeader
           title="Permissions"
-          description="Control which sidebar items each supervisor can access and what actions they can perform. Permissions apply to the shop selected below."
+          description="Control which sidebar items each supervisor can access and what actions they can perform. Permissions apply to the selected shop only."
           actions={
-            currentShop && (
+            permShop && (
               <Badge variant="outline" className="gap-1.5 text-slate-600">
-                <Store className="h-3.5 w-3.5" /> {currentShop.name}
+                <Store className="h-3.5 w-3.5" /> {permShop.name}
               </Badge>
             )
           }
@@ -152,19 +178,45 @@ export function PermissionsPage() {
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <CardContent className="p-4 md:p-6 flex flex-col h-full overflow-hidden gap-5">
 
-          {/* Supervisor selector */}
-          <div className="flex-shrink-0 flex flex-wrap items-center gap-3">
+          {/* Shop + Supervisor selectors */}
+          <div className="flex-shrink-0 flex flex-wrap items-end gap-3">
+            {/* Shop selector */}
             <div className="w-64">
+              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                <Store className="h-3.5 w-3.5" /> Shop
+              </label>
+              <Select value={permShopId ?? ''} onValueChange={handleShopChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={shops.length ? 'Select a shop' : 'No shops'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {shops.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-slate-400">No shops available</div>
+                  ) : (
+                    shops.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Supervisor selector */}
+            <div className="w-64">
+              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                <Shield className="h-3.5 w-3.5" /> Supervisor
+              </label>
               <Select
                 value={selectedSupervisorId ?? ''}
                 onValueChange={handleSupervisorChange}
+                disabled={!permShopId}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={supervisorsLoading ? 'Loading…' : 'Select a supervisor'} />
                 </SelectTrigger>
                 <SelectContent>
                   {activeSupervisors.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-slate-400">No active supervisors</div>
+                    <div className="px-3 py-2 text-sm text-slate-400">No supervisors for this shop</div>
                   ) : (
                     activeSupervisors.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -173,8 +225,9 @@ export function PermissionsPage() {
                 </SelectContent>
               </Select>
             </div>
+
             {selectedSupervisor && (
-              <Badge variant="outline" className="text-slate-500">
+              <Badge variant="outline" className="mb-1.5 text-slate-500">
                 {selectedSupervisor.email}
               </Badge>
             )}

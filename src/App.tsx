@@ -4,7 +4,6 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { GuestRoute } from '@/components/auth/GuestRoute';
 import { RoleRoute } from '@/components/auth/RoleRoute';
 import { LoginPage } from '@/pages/Login';
-import { RegisterPage } from '@/pages/Register';
 import { DashboardPage } from '@/pages/Dashboard';
 import { ProductsPage } from '@/pages/Products';
 import { InventoryPage } from '@/pages/Inventory';
@@ -47,7 +46,6 @@ export default function App() {
       <SessionInit />
       <Routes>
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-        <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
 
         <Route path="/bills/print/:id" element={<ProtectedRoute><BillPrintPage /></ProtectedRoute>} />
 

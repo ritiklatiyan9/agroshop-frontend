@@ -99,6 +99,7 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
                       <th className="text-left p-2">Product</th>
                       <th className="text-right p-2 w-20">Qty</th>
                       <th className="text-right p-2 w-24">Rate</th>
+                      {data.gst_enabled && <th className="text-right p-2 w-16">GST</th>}
                       <th className="text-right p-2 w-24">Amount</th>
                     </tr>
                   </thead>
@@ -118,6 +119,11 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
                         <td className="p-2 text-right font-mono">
                           {formatCurrency(it.rate)}
                         </td>
+                        {data.gst_enabled && (
+                          <td className="p-2 text-right font-mono text-slate-500">
+                            {formatNumber(it.gst_rate ?? '0', 0)}%
+                          </td>
+                        )}
                         <td className="p-2 text-right font-mono">
                           {formatCurrency(it.total_amount)}
                         </td>
@@ -129,7 +135,14 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
             </section>
 
             <section className="rounded-lg bg-slate-50 p-3 text-sm space-y-1.5">
-              <Row label="Total amount" value={formatCurrency(data.total_amount)} />
+              {data.gst_enabled && (
+                <>
+                  <Row label="Subtotal (taxable)" value={formatCurrency(data.subtotal ?? '0')} />
+                  <Row label="CGST" value={formatCurrency(data.cgst_total ?? '0')} />
+                  <Row label="SGST" value={formatCurrency(data.sgst_total ?? '0')} />
+                </>
+              )}
+              <Row label={data.gst_enabled ? 'Grand total' : 'Total amount'} value={formatCurrency(data.total_amount)} />
               <Row label="Paid" value={formatCurrency(data.paid_amount)} />
               <div className="flex justify-between font-bold border-t pt-1.5 mt-1.5">
                 <span>Balance due</span>

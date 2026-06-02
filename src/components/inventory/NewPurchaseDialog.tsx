@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -31,9 +32,12 @@ interface LineItem {
   product_id: string;
   quantity: string;
   rate: string;
+  gst_rate: string;
   batch_number: string;
   expiry_date: string;
 }
+
+const GST_RATES = ['0', '5', '12', '18', '28'] as const;
 
 interface Props {
   open: boolean;
@@ -46,6 +50,7 @@ function newRow(): LineItem {
     product_id: '',
     quantity: '',
     rate: '',
+    gst_rate: '0',
     batch_number: '',
     expiry_date: '',
   };
@@ -60,6 +65,7 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
   const [partyId, setPartyId] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [gstEnabled, setGstEnabled] = useState(false);
   const [paymentMode, setPaymentMode] = useState<'cash' | 'upi' | 'cheque' | 'bank_transfer'>('cash');
   const [paidAmount, setPaidAmount] = useState('');
   const [notes, setNotes] = useState('');
@@ -68,16 +74,22 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
   const [billPreview, setBillPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const total = useMemo(
-    () =>
-      items.reduce((sum, it) => {
-        const q = Number(it.quantity) || 0;
-        const r = Number(it.rate) || 0;
-        return sum + q * r;
-      }, 0),
-    [items],
-  );
+  const totals = useMemo(() => {
+    let subtotal = 0;
+    let gst = 0;
+    for (const it of items) {
+      const q = Number(it.quantity) || 0;
+      const r = Number(it.rate) || 0;
+      const taxable = q * r;
+      subtotal += taxable;
+      if (gstEnabled) gst += taxable * ((Number(it.gst_rate) || 0) / 100);
+    }
+    const cgst = gst / 2;
+    const sgst = gst / 2;
+    return { subtotal, cgst, sgst, gst, grandTotal: subtotal + gst };
+  }, [items, gstEnabled]);
 
+  const total = totals.grandTotal;
   const balance = Math.max(0, total - (Number(paidAmount) || 0));
 
   function updateItem(id: string, patch: Partial<LineItem>) {
@@ -113,6 +125,7 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
     setPartyId('');
     setPurchaseDate(new Date().toISOString().split('T')[0]);
     setInvoiceNumber('');
+    setGstEnabled(false);
     setPaymentMode('cash');
     setPaidAmount('');
     setNotes('');
@@ -128,6 +141,7 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
         party_id: partyId,
         purchase_date: purchaseDate,
         invoice_number: invoiceNumber || undefined,
+        gst_enabled: gstEnabled,
         payment_mode: paymentMode,
         paid_amount: Number(paidAmount) || 0,
         notes: notes || undefined,
@@ -137,6 +151,7 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
             product_id: i.product_id,
             quantity: Number(i.quantity),
             rate: Number(i.rate) || 0,
+            gst_rate: gstEnabled ? Number(i.gst_rate) || 0 : 0,
             batch_number: i.batch_number || undefined,
             expiry_date: i.expiry_date || undefined,
           })),
@@ -212,6 +227,14 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
           </div>
         </div>
 
+        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 mt-2">
+          <div>
+            <Label className="cursor-pointer" htmlFor="purchase-gst">GST purchase</Label>
+            <p className="text-xs text-slate-500">Add CGST/SGST tax per item on this purchase.</p>
+          </div>
+          <Switch checked={gstEnabled} onCheckedChange={setGstEnabled} />
+        </div>
+
         <div className="border border-slate-200 rounded-lg overflow-hidden mt-2">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -221,13 +244,17 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
                 <th className="text-left p-2">Expiry</th>
                 <th className="text-right p-2">Qty</th>
                 <th className="text-right p-2">Rate</th>
+                {gstEnabled && <th className="text-right p-2 w-24">GST %</th>}
                 <th className="text-right p-2">Amount</th>
                 <th className="w-10"></th>
               </tr>
             </thead>
             <tbody>
               {items.map((it) => {
-                const amount = (Number(it.quantity) || 0) * (Number(it.rate) || 0);
+                const taxable = (Number(it.quantity) || 0) * (Number(it.rate) || 0);
+                const amount = gstEnabled
+                  ? taxable * (1 + (Number(it.gst_rate) || 0) / 100)
+                  : taxable;
                 return (
                   <tr key={it.id} className="border-t border-slate-100">
                     <td className="p-1.5">
@@ -281,6 +308,25 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
                         className="h-9 text-right"
                       />
                     </td>
+                    {gstEnabled && (
+                      <td className="p-1.5">
+                        <Select
+                          value={it.gst_rate}
+                          onValueChange={(v) => updateItem(it.id, { gst_rate: v })}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {GST_RATES.map((r) => (
+                              <SelectItem key={r} value={r}>
+                                {r}%
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    )}
                     <td className="p-2 text-right font-mono">{formatCurrency(amount)}</td>
                     <td className="p-1">
                       <Button
@@ -354,9 +400,25 @@ export function NewPurchaseDialog({ open, onOpenChange }: Props) {
           </div>
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Sub total</span>
-              <span className="font-mono">{formatCurrency(total)}</span>
+              <span className="text-slate-500">Sub total{gstEnabled ? ' (taxable)' : ''}</span>
+              <span className="font-mono">{formatCurrency(totals.subtotal)}</span>
             </div>
+            {gstEnabled && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">CGST</span>
+                  <span className="font-mono">{formatCurrency(totals.cgst)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">SGST</span>
+                  <span className="font-mono">{formatCurrency(totals.sgst)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-medium border-t border-slate-100 pt-1">
+                  <span>Grand total</span>
+                  <span className="font-mono">{formatCurrency(total)}</span>
+                </div>
+              </>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Payment mode</Label>

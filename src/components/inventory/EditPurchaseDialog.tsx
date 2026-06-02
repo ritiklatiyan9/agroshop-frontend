@@ -183,6 +183,7 @@ export function EditPurchaseDialog({ purchaseId, open, onOpenChange }: Props) {
                       <th className="text-left p-2">Product</th>
                       <th className="text-right p-2 w-20">Qty</th>
                       <th className="text-right p-2 w-24">Rate</th>
+                      {data.gst_enabled && <th className="text-right p-2 w-16">GST</th>}
                       <th className="text-right p-2 w-24">Amount</th>
                     </tr>
                   </thead>
@@ -199,6 +200,11 @@ export function EditPurchaseDialog({ purchaseId, open, onOpenChange }: Props) {
                           {formatNumber(it.quantity, 2)} {it.product?.unit ?? ''}
                         </td>
                         <td className="p-2 text-right font-mono">{formatCurrency(it.rate)}</td>
+                        {data.gst_enabled && (
+                          <td className="p-2 text-right font-mono text-slate-500">
+                            {formatNumber(it.gst_rate ?? '0', 0)}%
+                          </td>
+                        )}
                         <td className="p-2 text-right font-mono">{formatCurrency(it.total_amount)}</td>
                       </tr>
                     ))}
@@ -275,8 +281,24 @@ export function EditPurchaseDialog({ purchaseId, open, onOpenChange }: Props) {
               </div>
 
               <div className="space-y-3">
+                {data.gst_enabled && (
+                  <div className="space-y-1 rounded-lg bg-slate-50 p-2.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Subtotal (taxable)</span>
+                      <span className="font-mono">{formatCurrency(data.subtotal ?? '0')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">CGST</span>
+                      <span className="font-mono">{formatCurrency(data.cgst_total ?? '0')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">SGST</span>
+                      <span className="font-mono">{formatCurrency(data.sgst_total ?? '0')}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="text-sm flex justify-between">
-                  <span className="text-slate-500">Total amount</span>
+                  <span className="text-slate-500">{data.gst_enabled ? 'Grand total' : 'Total amount'}</span>
                   <span className="font-mono font-medium">{formatCurrency(totalAmount)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">

@@ -4,6 +4,8 @@ import { Download, Eye, Printer, Search, X, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/axios';
 import { downloadCsv } from '@/lib/download';
+import { printHtml, escapeHtml } from '@/lib/printHtml';
+import { useCurrentShop } from '@/store/authStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +54,9 @@ export function SalesReportPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [viewBillId, setViewBillId] = useState<string | null>(null);
+  const [printing, setPrinting] = useState(false);
 
+  const currentShop = useCurrentShop();
   const { data: parties = [] } = useParties('customer');
 
   const params = {
@@ -80,6 +84,35 @@ export function SalesReportPage() {
     } catch { toast.error('CSV export failed'); }
   }
 
+  async function handlePrint() {
+    try {
+      setPrinting(true);
+      // Fetch the full filtered set (not just the visible page) for a complete report.
+      const res = await api.get<SalesResponse>('/reports/sales', { params: { ...params, page: 1, page_size: 500 } });
+      const rep = res.data;
+      if (!rep.data.length) { toast.error('Nothing to print for these filters'); return; }
+      printHtml(
+        buildSalesReportHtml({
+          shopName: currentShop?.name ?? 'Shop',
+          rows: rep.data,
+          summary: rep.summary,
+          filters: {
+            from: fromDate,
+            to: toDate,
+            billType,
+            paymentStatus,
+            party: partyId !== 'all' ? (parties.find((p) => p.id === partyId)?.name ?? '') : '',
+            search,
+          },
+        }),
+      );
+    } catch {
+      toast.error('Print failed');
+    } finally {
+      setPrinting(false);
+    }
+  }
+
   function statusVariant(s: string) {
     return s === 'paid' ? 'success' : s === 'unpaid' ? 'danger' : 'warning';
   }
@@ -94,8 +127,8 @@ export function SalesReportPage() {
           description="Filter sales by date, party, type, payment status."
           actions={
             <>
-              <Button variant="outline" size="sm" onClick={() => window.print()}>
-                <Printer className="h-4 w-4 mr-2" /> Print / PDF
+              <Button variant="outline" size="sm" onClick={handlePrint} disabled={printing}>
+                <Printer className="h-4 w-4 mr-2" /> {printing ? 'Preparing…' : 'Print / PDF'}
               </Button>
               <Button variant="outline" size="sm" onClick={exportCsv}>
                 <Download className="h-4 w-4 mr-2" /> Export CSV
@@ -113,7 +146,7 @@ export function SalesReportPage() {
             <p className="text-xs text-slate-500 mt-0.5">{data?.summary.total_bills ?? '—'} bills</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => window.print()} className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 active:bg-slate-50">
+            <button onClick={handlePrint} disabled={printing} className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 active:bg-slate-50 disabled:opacity-50">
               <Printer className="h-3.5 w-3.5" />
             </button>
             <button onClick={exportCsv} className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 active:bg-slate-50">
@@ -318,4 +351,128 @@ function StatPill({ label, value, color = 'slate' }: { label: string; value: str
       <p className={`mt-0.5 text-sm font-bold ${textColor} leading-none whitespace-nowrap`}>{value}</p>
     </div>
   );
+}
+
+/* ── HTML print document (rendered in a hidden iframe, not a screen capture) ── */
+function buildSalesReportHtml(opts: {
+  shopName: string;
+  rows: BillRow[];
+  summary: SalesResponse['summary'];
+  filters: { from: string; to: string; billType: string; paymentStatus: string; party: string; search: string };
+}): string {
+  const { shopName, rows, summary, filters } = opts;
+  const inr = (n: number | string) =>
+    '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const typeLabel = filters.billType === 'all' ? 'All types' : filters.billType === 'gst' ? 'GST' : 'Non-GST';
+  const statusLabel = filters.paymentStatus === 'all' ? 'All statuses' : filters.paymentStatus;
+  const range =
+    filters.from || filters.to
+      ? `${filters.from || '…'} to ${filters.to || '…'}`
+      : 'All dates';
+  const chips = [
+    `Period: ${range}`,
+    `Type: ${typeLabel}`,
+    `Payment: ${statusLabel}`,
+    filters.party ? `Party: ${filters.party}` : '',
+    filters.search ? `Search: "${filters.search}"` : '',
+  ].filter(Boolean);
+
+  const bodyRows = rows
+    .map((b) => {
+      const gst = Number(b.cgst_total) + Number(b.sgst_total);
+      const party = b.customer_name || b.party?.name || 'Walk-in';
+      return `
+      <tr>
+        <td class="mono">${escapeHtml(b.bill_number)}</td>
+        <td>${escapeHtml(new Date(b.bill_date).toLocaleDateString('en-IN'))}</td>
+        <td>${escapeHtml(party)}</td>
+        <td class="center">${b.bill_type === 'gst' ? 'GST' : 'Non-GST'}</td>
+        <td class="num">${inr(b.subtotal)}</td>
+        <td class="num">${inr(gst)}</td>
+        <td class="num">${inr(b.grand_total)}</td>
+        <td class="center cap">${escapeHtml(b.payment_status)}</td>
+      </tr>`;
+    })
+    .join('');
+
+  const totalGst = Number(summary.cgst) + Number(summary.sgst);
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Sales Report · ${escapeHtml(shopName)}</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #0f172a; margin: 0; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #047857; padding-bottom: 10px; margin-bottom: 12px; }
+    .shop { font-size: 18px; font-weight: 700; }
+    .title { font-size: 14px; font-weight: 600; color: #047857; margin-top: 2px; }
+    .meta { text-align: right; font-size: 11px; color: #475569; line-height: 1.5; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .chip { font-size: 10px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 999px; padding: 2px 8px; color: #334155; }
+    .cards { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; min-width: 110px; }
+    .card .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: #64748b; }
+    .card .val { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    thead th { background: #f1f5f9; text-align: left; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; text-transform: uppercase; font-size: 10px; letter-spacing: .03em; color: #334155; }
+    tbody td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; }
+    tfoot td { padding: 7px 8px; border-top: 2px solid #cbd5e1; font-weight: 700; background: #f8fafc; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .center { text-align: center; }
+    .cap { text-transform: capitalize; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .footer { margin-top: 10px; font-size: 10px; color: #94a3b8; text-align: right; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="shop">${escapeHtml(shopName)}</div>
+      <div class="title">Sales Report</div>
+    </div>
+    <div class="meta">
+      <div><strong>${rows.length}</strong> bill(s)</div>
+      <div>Generated ${escapeHtml(new Date().toLocaleString('en-IN'))}</div>
+    </div>
+  </div>
+
+  <div class="chips">${chips.map((c) => `<span class="chip">${escapeHtml(c)}</span>`).join('')}</div>
+
+  <div class="cards">
+    <div class="card"><div class="lbl">Bills</div><div class="val">${summary.total_bills}</div></div>
+    <div class="card"><div class="lbl">Taxable</div><div class="val">${inr(summary.subtotal)}</div></div>
+    <div class="card"><div class="lbl">GST</div><div class="val">${inr(totalGst)}</div></div>
+    <div class="card"><div class="lbl">Total</div><div class="val">${inr(summary.total_amount)}</div></div>
+    <div class="card"><div class="lbl">Collected</div><div class="val">${inr(summary.collected)}</div></div>
+    <div class="card"><div class="lbl">Outstanding</div><div class="val">${inr(summary.outstanding)}</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Bill #</th><th>Date</th><th>Party</th><th class="center">Type</th>
+        <th class="num">Taxable</th><th class="num">GST</th><th class="num">Total</th><th class="center">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${bodyRows || '<tr><td colspan="8" class="center">No records.</td></tr>'}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4">Total (${rows.length})</td>
+        <td class="num">${inr(summary.subtotal)}</td>
+        <td class="num">${inr(totalGst)}</td>
+        <td class="num">${inr(summary.total_amount)}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="footer">Collected ${inr(summary.collected)} · Outstanding ${inr(summary.outstanding)}</div>
+</body>
+</html>`;
 }

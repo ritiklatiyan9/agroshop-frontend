@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Printer, PackageSearch } from 'lucide-react';
+import { Download, Printer, PackageSearch, Boxes, IndianRupee, AlertTriangle, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/axios';
 import { downloadCsv } from '@/lib/download';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +59,9 @@ export function StockReportPage() {
   const [status, setStatus] = useState<'all' | 'low' | 'expiring' | 'expired'>('all');
   const { data: categories = [] } = useCategories();
 
+  // Toggle a status filter from the summary cards (click again to clear).
+  const toggleStatus = (s: 'low' | 'expiring') => setStatus((cur) => (cur === s ? 'all' : s));
+
   const params = {
     category_id: categoryId !== 'all' ? categoryId : undefined,
     status,
@@ -108,13 +112,13 @@ export function StockReportPage() {
         </div>
       </div>
 
-      {/* ── Stats strip ── */}
+      {/* ── Stats strip (clickable filters) ── */}
       <div className="flex-shrink-0 px-4 lg:px-6 pt-3 pb-2">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3">
-          <MobileStat label="Products" value={data?.summary.total_products ?? '—'} />
-          <MobileStat label="Stock Value" value={data ? formatCurrency(data.summary.total_stock_value) : '—'} />
-          <MobileStat label="Low / Out" value={data?.summary.low_stock ?? '—'} color={Number(data?.summary.low_stock) > 0 ? 'danger' : 'slate'} />
-          <MobileStat label="Expiring" value={data?.summary.expiring_30_days ?? '—'} color={Number(data?.summary.expiring_30_days) > 0 ? 'amber' : 'slate'} />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3">
+          <StatCard label="Products" value={data?.summary.total_products ?? '—'} icon={Boxes} active={status === 'all'} onClick={() => setStatus('all')} />
+          <StatCard label="Stock Value" value={data ? formatCurrency(data.summary.total_stock_value) : '—'} icon={IndianRupee} onClick={() => setStatus('all')} />
+          <StatCard label="Low / Out" value={data?.summary.low_stock ?? '—'} icon={AlertTriangle} color={Number(data?.summary.low_stock) > 0 ? 'danger' : 'slate'} active={status === 'low'} onClick={() => toggleStatus('low')} />
+          <StatCard label="Expiring" value={data?.summary.expiring_30_days ?? '—'} icon={CalendarClock} color={Number(data?.summary.expiring_30_days) > 0 ? 'amber' : 'slate'} active={status === 'expiring'} onClick={() => toggleStatus('expiring')} />
         </div>
       </div>
 
@@ -243,12 +247,38 @@ export function StockReportPage() {
   );
 }
 
-function MobileStat({ label, value, color = 'slate' }: { label: string; value: string | number; color?: 'slate' | 'danger' | 'amber' }) {
+function StatCard({
+  label, value, color = 'slate', icon: Icon, active = false, onClick,
+}: {
+  label: string;
+  value: string | number;
+  color?: 'slate' | 'danger' | 'amber';
+  icon?: React.ComponentType<{ className?: string }>;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   const textColor = color === 'danger' ? 'text-red-600' : color === 'amber' ? 'text-amber-700' : 'text-slate-900';
+  const chip = color === 'danger' ? 'bg-red-50 text-red-500' : color === 'amber' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600';
+  const ring = color === 'danger' ? 'ring-red-400/70' : color === 'amber' ? 'ring-amber-400/70' : 'ring-emerald-400/70';
   return (
-    <div className="rounded-xl bg-white border border-slate-100 p-3 shadow-sm">
-      <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">{label}</p>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded-xl bg-white border border-slate-100 p-3 shadow-sm text-left transition-all active:scale-[0.98] hover:shadow-md',
+        active && `ring-2 ring-inset ${ring}`,
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium truncate">{label}</p>
+        {Icon && (
+          <div className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-md', chip)}>
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+        )}
+      </div>
       <p className={`mt-1 text-lg font-bold ${textColor} leading-none`}>{value}</p>
-    </div>
+      {active && <p className="mt-1 text-[10px] font-semibold text-slate-400">Filtering</p>}
+    </button>
   );
 }
