@@ -1,3 +1,4 @@
+import { BillActions } from '@/components/billing/BillActions';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { openBillPrint } from '@/lib/printBill';
@@ -280,6 +281,7 @@ export function BillHistoryPage() {
                 </div>
               </div>
 
+              <div className="mt-2 flex justify-end"><BillActions showLabels id={b.id} cancelled={isCancelled} /></div>
               {/* Quick action row */}
               <div className="flex gap-2 mt-3 pt-3 border-t border-slate-50" onClick={(e) => e.stopPropagation()}>
                 <button
@@ -405,7 +407,7 @@ export function BillHistoryPage() {
                     <TableHead className="hidden md:table-cell text-right">Paid</TableHead>
                     <TableHead className="hidden md:table-cell text-right">Balance</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="sticky right-0 bg-slate-50 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -437,8 +439,9 @@ export function BillHistoryPage() {
                             <Badge variant={statusVariant(b.payment_status)}>{b.payment_status}</Badge>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
+                        <TableCell className="sticky right-0 bg-white">
+                          <div className="flex items-center justify-end gap-1">
+                            <BillActions showLabels id={b.id} cancelled={b.status === 'cancelled'} />
                             <Button variant="ghost" size="icon" title="View" onClick={() => setViewBillId(b.id)}><Eye className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" title="Print" onClick={() => openBillPrint(b.id, navigate)}><Printer className="h-4 w-4" /></Button>
                             {!isCancelled && balance > 0 && (

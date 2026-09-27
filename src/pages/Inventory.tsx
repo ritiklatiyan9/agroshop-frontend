@@ -1,5 +1,11 @@
+import { toast } from 'sonner';
+import { InventoryProductActions } from '@/components/inventory/InventoryProductActions';
+import { StockMovementActions } from '@/components/inventory/StockMovementActions';
+import { PurchaseActions } from '@/components/inventory/PurchaseActions';
+import { EditPurchaseDialog } from '@/components/inventory/EditPurchaseDialog';
+import { AddEditProductSheet } from '@/components/products/AddEditProductSheet';
 import { useState, useMemo } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query';
 import {
   History, Plus, Settings2, Eye, Search, X,
   ArrowDownLeft, ArrowUpRight, Package, ChevronDown, ChevronUp,
@@ -45,6 +51,14 @@ export function InventoryPage({ initialTab = 'stock' }: Props) {
   const [viewPurchaseId, setViewPurchaseId] = useState<string | null>(null);
   const [viewBillId, setViewBillId] = useState<string | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editPurchaseId, setEditPurchaseId] = useState<string | null>(null);
+  const [editingMovement, setEditingMovement] = useState<StockMovement | null>(null);
+  const loadProduct = useMutation({
+    mutationFn: async (id: string) => (await api.get<Product>('/products/' + id)).data,
+    onSuccess: setEditingProduct,
+    onError: () => toast.error('Unable to load this inventory item'),
+  });
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50/60">
@@ -115,16 +129,19 @@ export function InventoryPage({ initialTab = 'stock' }: Props) {
           <CurrentStock
             onOpenLedger={(p) => setLedgerProduct({ id: p.id, name: p.name })}
             onAdjustProduct={(p) => { setAdjustPreselect(p.id); setAdjustOpen(true); }}
+            onEditProduct={id => loadProduct.mutate(id)}
           />
         </TabsContent>
         <TabsContent value="movements" className="flex-1 min-h-0 overflow-hidden mt-0">
           <Movements
             onViewBill={(id) => setViewBillId(id)}
             onViewPurchase={(id) => setViewPurchaseId(id)}
+            onEditMovement={setEditingMovement}
+            onEditPurchase={setEditPurchaseId}
           />
         </TabsContent>
         <TabsContent value="purchases" className="flex-1 min-h-0 overflow-hidden mt-0">
-          <Purchases onNew={() => setPurchaseOpen(true)} onView={(id) => setViewPurchaseId(id)} />
+          <Purchases onNew={() => setPurchaseOpen(true)} onView={(id) => setViewPurchaseId(id)} onEdit={setEditPurchaseId} />
         </TabsContent>
       </Tabs>
 
@@ -155,6 +172,10 @@ export function InventoryPage({ initialTab = 'stock' }: Props) {
       </div>
 
       {/* ── Sheets & Dialogs ── */}
+      {loadProduct.isPending && <div role="status" className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white">Loading item for editing…</div>}
+      <AddEditProductSheet open={!!editingProduct} onOpenChange={open => !open && setEditingProduct(null)} product={editingProduct} />
+      <EditPurchaseDialog purchaseId={editPurchaseId} open={!!editPurchaseId} onOpenChange={open => !open && setEditPurchaseId(null)} />
+      <ManualAdjustmentDialog movement={editingMovement} open={!!editingMovement} onOpenChange={open => !open && setEditingMovement(null)} />
       <StockLedgerSheet
         open={!!ledgerProduct} onOpenChange={(v) => !v && setLedgerProduct(null)}
         productId={ledgerProduct?.id ?? null} productName={ledgerProduct?.name}
@@ -168,6 +189,7 @@ export function InventoryPage({ initialTab = 'stock' }: Props) {
       <PurchaseDetailSheet
         purchaseId={viewPurchaseId} open={!!viewPurchaseId}
         onOpenChange={(v) => !v && setViewPurchaseId(null)}
+        onEdit={id => { setViewPurchaseId(null); setEditPurchaseId(id); }}
       />
       <BillDetailSheet
         billId={viewBillId} open={!!viewBillId}
@@ -183,9 +205,11 @@ export function InventoryPage({ initialTab = 'stock' }: Props) {
 function CurrentStock({
   onOpenLedger,
   onAdjustProduct,
+  onEditProduct,
 }: {
   onOpenLedger: (p: { id: string; name: string }) => void;
   onAdjustProduct: (p: { id: string; name: string }) => void;
+  onEditProduct: (id: string) => void;
 }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'low' | 'expiring'>('all');
@@ -300,7 +324,7 @@ function CurrentStock({
                   <TableHead className="text-right">Value</TableHead>
                   <TableHead>Expiry</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right w-20"></TableHead>
+                  <TableHead className="sticky right-0 bg-slate-50 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -330,8 +354,9 @@ function CurrentStock({
                     <TableCell className="text-right font-mono text-slate-700 whitespace-nowrap">{formatCurrency(r.stock_value)}</TableCell>
                     <TableCell className="whitespace-nowrap"><ExpiryBadge date={r.expiry_date} /></TableCell>
                     <TableCell><LowStockBadge current={r.current_stock} min={r.min_stock_level} /></TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-0.5 opacity-60 transition-opacity group-hover:opacity-100">
+                    <TableCell className="sticky right-0 bg-white">
+                      <div className="flex items-center justify-end gap-1">
+                        <InventoryProductActions id={r.id} name={r.name} onEdit={onEditProduct} />
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="View ledger" onClick={() => onOpenLedger(r)}><History className="h-3.5 w-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Adjust stock" onClick={() => onAdjustProduct(r)}><Settings2 className="h-3.5 w-3.5" /></Button>
                       </div>
@@ -408,6 +433,7 @@ function CurrentStock({
                       </button>
                     </div>
                   </div>
+                  <div className="mt-3 flex justify-end border-t border-slate-100 pt-2"><InventoryProductActions id={r.id} name={r.name} onEdit={onEditProduct} /></div>
                 </div>
               </div>
             );
@@ -424,9 +450,13 @@ function CurrentStock({
 function Movements({
   onViewBill,
   onViewPurchase,
+  onEditMovement,
+  onEditPurchase,
 }: {
   onViewBill: (id: string) => void;
   onViewPurchase: (id: string) => void;
+  onEditMovement: (movement: StockMovement) => void;
+  onEditPurchase: (id: string) => void;
 }) {
   const [page, setPage] = useState(1);
   const [movementType, setMovementType] = useState<MovementType | 'all'>('all');
@@ -534,7 +564,7 @@ function Movements({
                   <TableHead className="hidden sm:table-cell text-right">Rate</TableHead>
                   <TableHead className="hidden md:table-cell text-right">Total</TableHead>
                   <TableHead className="hidden md:table-cell">Reference</TableHead>
-                  <TableHead className="w-12"></TableHead>
+                  <TableHead className="sticky right-0 bg-slate-50 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -547,7 +577,7 @@ function Movements({
                 {data?.data.map((m) => {
                   const isIn = ['purchase', 'adjustment_in', 'return_in'].includes(m.movement_type);
                   const qty = Number(m.quantity); const rate = Number(m.rate);
-                  const canView = m.reference_id && (m.reference_type === 'bill' || m.reference_type === 'purchase');
+                  const canView = m.reference_exists !== false && m.reference_id && (m.reference_type === 'bill' || m.reference_type === 'purchase');
                   return (
                     <TableRow key={m.id}>
                       <TableCell className="text-sm">{new Date(m.created_at).toLocaleDateString('en-IN')}</TableCell>
@@ -557,12 +587,13 @@ function Movements({
                       <TableCell className="hidden sm:table-cell text-right font-mono">{formatCurrency(m.rate)}</TableCell>
                       <TableCell className="hidden md:table-cell text-right font-mono">{rate > 0 ? formatCurrency(qty * rate) : '—'}</TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-slate-500">{m.reference_type || '—'}</TableCell>
-                      <TableCell>
+                      <TableCell className="sticky right-0 bg-white"><div className="flex items-center justify-end gap-1">
+                        <StockMovementActions movement={m} onEdit={onEditMovement} onEditPurchase={onEditPurchase} />
                         {canView ? (
                           <Button variant="ghost" size="icon" onClick={() => { if (m.reference_type === 'bill') onViewBill(m.reference_id!); else onViewPurchase(m.reference_id!); }}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                        ) : <span className="text-slate-300 text-xs">—</span>}
+                        ) : null}</div>
                       </TableCell>
                     </TableRow>
                   );
@@ -589,7 +620,7 @@ function Movements({
           {data?.data.map((m) => {
             const isIn = ['purchase', 'adjustment_in', 'return_in'].includes(m.movement_type);
             const qty = Number(m.quantity); const rate = Number(m.rate);
-            const canView = m.reference_id && (m.reference_type === 'bill' || m.reference_type === 'purchase');
+            const canView = m.reference_exists !== false && m.reference_id && (m.reference_type === 'bill' || m.reference_type === 'purchase');
             return (
               <div key={m.id} className="flex gap-3 bg-white rounded-xl border border-slate-100 shadow-sm p-3">
                 {/* Icon */}
@@ -624,6 +655,7 @@ function Movements({
                       <span>Total {formatCurrency(qty * rate)}</span>
                     </div>
                   )}
+                  <div className="mt-2 flex flex-wrap justify-end border-t border-slate-100 pt-2"><StockMovementActions movement={m} onEdit={onEditMovement} onEditPurchase={onEditPurchase} /></div>
                 </div>
                 {canView && (
                   <button
@@ -650,15 +682,15 @@ function Movements({
 /* ─────────────────────────────────────────────
    PURCHASES
 ───────────────────────────────────────────── */
-function Purchases({ onNew, onView }: { onNew: () => void; onView: (id: string) => void }) {
+function Purchases({ onNew, onView, onEdit }: { onNew: () => void; onView: (id: string) => void; onEdit: (id: string) => void }) {
   const [page, setPage] = useState(1);
   const [paymentStatus, setPaymentStatus] = useState<'all' | 'paid' | 'unpaid' | 'partial'>('all');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['purchases', { page, paymentStatus }],
+    queryKey: ['purchases', { page, paymentStatus, documentType: 'purchase', pageSize: 30 }],
     queryFn: async () => {
       const res = await api.get<{ data: Purchase[]; pagination: Pagination }>('/purchases', {
-        params: { page, page_size: 30, payment_status: paymentStatus !== 'all' ? paymentStatus : undefined },
+        params: { page, page_size: 30, document_type: 'purchase', payment_status: paymentStatus !== 'all' ? paymentStatus : undefined },
       });
       return res.data;
     },
@@ -697,7 +729,7 @@ function Purchases({ onNew, onView }: { onNew: () => void; onView: (id: string) 
                   <TableHead className="hidden sm:table-cell text-right">Items</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="hidden md:table-cell text-right">Paid</TableHead>
-                  <TableHead>Status</TableHead><TableHead></TableHead>
+                  <TableHead>Status</TableHead><TableHead className="sticky right-0 bg-slate-50 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -716,8 +748,9 @@ function Purchases({ onNew, onView }: { onNew: () => void; onView: (id: string) 
                     <TableCell className="text-right font-mono">{formatCurrency(p.total_amount)}</TableCell>
                     <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(p.paid_amount)}</TableCell>
                     <TableCell><Badge variant={statusVariant(p.payment_status)}>{p.payment_status}</Badge></TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => onView(p.id)}><Eye className="h-4 w-4" /></Button>
+                    <TableCell className="sticky right-0 bg-white"><div className="flex items-center justify-end gap-1">
+                      <PurchaseActions showLabels purchase={p} onEdit={onEdit} />
+                      <Button variant="ghost" size="icon" onClick={() => onView(p.id)}><Eye className="h-4 w-4" /></Button></div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -741,7 +774,7 @@ function Purchases({ onNew, onView }: { onNew: () => void; onView: (id: string) 
         )}
         <div className="space-y-2 pb-24">
           {data?.data.map((p) => (
-            <button
+            <div
               key={p.id}
               onClick={() => onView(p.id)}
               className="w-full text-left bg-white rounded-xl border border-slate-100 shadow-sm p-3 active:bg-slate-50 transition-colors"
@@ -774,7 +807,8 @@ function Purchases({ onNew, onView }: { onNew: () => void; onView: (id: string) 
                   <p className="font-mono text-sm text-slate-600">{formatCurrency(p.paid_amount)}</p>
                 </div>
               </div>
-            </button>
+              <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2" onClick={e => e.stopPropagation()}><Button variant="ghost" size="sm" onClick={() => onView(p.id)}><Eye className="mr-1 h-4 w-4" />View</Button><PurchaseActions showLabels purchase={p} onEdit={onEdit} /></div>
+            </div>
           ))}
         </div>
         {data && data.pagination.total_pages > 1 && (

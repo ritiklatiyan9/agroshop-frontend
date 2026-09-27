@@ -1,3 +1,4 @@
+import { convertQuantity } from '@/lib/units';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,6 +10,7 @@ import { useActionNotify } from '@/hooks/useActionNotify';
 import { api } from '@/lib/axios';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { UnitInput } from '@/components/ui/unit-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,7 +29,10 @@ const schema = z.object({
   brand: z.string().optional(),
   category_id: z.string().optional(),
   hsn_code: z.string().optional(),
-  unit: z.enum(['kg', 'gm', 'ltr', 'ml', 'packet', 'bottle', 'box', 'piece']),
+  unit: z.string().trim().min(1, 'Unit is required').max(64),
+  pack_label: z.string().max(80).optional(),
+  packing_type: z.string().max(40).optional(),
+  units_per_pack: z.coerce.number().int().min(0).optional(),
   pack_size: z.coerce.number().min(0).optional(),
   purchase_price: z.coerce.number().min(0),
   selling_price: z.coerce.number().min(0),
@@ -44,7 +49,7 @@ type FormInput = z.infer<typeof schema>;
 const UNIT_OPTIONS = ['ml', 'gm', 'ltr', 'kg', 'packet', 'bottle', 'box', 'piece'] as const;
 
 // Quick-pick pack sizes shown per unit (tap a chip to fill the size). Empty = no presets, free entry only.
-const PACK_SIZE_PRESETS: Record<FormInput['unit'], number[]> = {
+const PACK_SIZE_PRESETS: Record<string, number[]> = {
   ml: [50, 100, 200, 250, 500, 1000],
   gm: [50, 100, 250, 500, 1000],
   ltr: [1, 2, 5, 10, 20],
@@ -65,6 +70,7 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
   const queryClient = useQueryClient();
   const { notify } = useActionNotify();
   const { data: categories = [] } = useCategories();
+  const committedUnit = useRef('piece');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -78,6 +84,9 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
       hsn_code: '',
       unit: 'piece',
       pack_size: 0,
+      pack_label: '',
+      packing_type: '',
+      units_per_pack: 0,
       purchase_price: 0,
       selling_price: 0,
       gst_rate: 0,
@@ -97,6 +106,9 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
         hsn_code: product.hsn_code || '',
         unit: product.unit,
         pack_size: product.pack_size ? Number(product.pack_size) : 0,
+        pack_label: product.pack_label || '',
+        packing_type: product.packing_type || '',
+        units_per_pack: product.units_per_pack || 0,
         purchase_price: Number(product.purchase_price),
         selling_price: Number(product.selling_price),
         gst_rate: product.gst_rate,
@@ -114,6 +126,9 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
         hsn_code: '',
         unit: 'piece',
         pack_size: 0,
+        pack_label: '',
+        packing_type: '',
+        units_per_pack: 0,
         purchase_price: 0,
         selling_price: 0,
         gst_rate: 0,
@@ -124,6 +139,7 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
       });
       setImagePreview(null);
     }
+    committedUnit.current = product?.unit || 'piece';
     setImageFile(null);
   }, [product, open]);
 
@@ -131,7 +147,7 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
     mutationFn: async (values: FormInput) => {
       const fd = new FormData();
       Object.entries(values).forEach(([k, v]) => {
-        if (v !== undefined && v !== null && v !== '') fd.append(k, String(v));
+        if (v !== undefined && v !== null) fd.append(k, k === 'units_per_pack' && !v ? 'null' : String(v));
       });
       if (imageFile) fd.append('image', imageFile);
       if (product) {
@@ -154,6 +170,17 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
       toast.error(err.response?.data?.error || 'Failed to save product');
     },
   });
+
+  function convertFormUnit() {
+    const from = committedUnit.current; const to = form.getValues('unit');
+    if (!to || to === from) return;
+    try {
+      const factor = convertQuantity(1, from, to);
+      for (const key of ['current_stock', 'min_stock_level', 'pack_size'] as const) form.setValue(key, convertQuantity(Number(form.getValues(key) || 0), from, to));
+      for (const key of ['purchase_price', 'selling_price'] as const) form.setValue(key, Math.round(Number(form.getValues(key) || 0) / factor * 100) / 100);
+      committedUnit.current = to;
+    } catch { /* Incompatible units are validated by the backend for saved products. */ }
+  }
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -226,24 +253,19 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
               <Input {...form.register('hsn_code')} placeholder="3808" />
             </FormField>
 
-            <FormField label="Unit">
-              <Select
-                value={form.watch('unit')}
-                onValueChange={(v) => form.setValue('unit', v as FormInput['unit'])}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIT_OPTIONS.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {u}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <FormField label="Stock / quantity unit" error={form.formState.errors.unit?.message}>
+              <UnitInput onBlur={convertFormUnit} value={form.watch('unit')} onValueChange={value => form.setValue('unit', value, { shouldDirty: true })} />
+              <p className="text-xs text-slate-500">Choose ml, ltr, kg or type a custom unit such as 200 ml.</p>
             </FormField>
-
+            <FormField label="Pack label">
+              <UnitInput value={form.watch('pack_label') || ''} onValueChange={value => form.setValue('pack_label', value)} options={['200 ml', '250 ml', '500 ml', '1 ltr', '1 kg', '5 kg']} placeholder="e.g. 250 ml" />
+            </FormField>
+            <FormField label="Packing type">
+              <UnitInput value={form.watch('packing_type') || ''} onValueChange={value => form.setValue('packing_type', value)} options={['CARTON', 'BAG', 'BUCKET', 'BOX', 'BOTTLE']} placeholder="e.g. CARTON" />
+            </FormField>
+            <FormField label="Units per pack">
+              <Input type="number" min="0" step="1" {...form.register('units_per_pack')} placeholder="e.g. 40" />
+            </FormField>
             <FormField label="GST rate (%)">
               <Select
                 value={String(form.watch('gst_rate') ?? 0)}
@@ -275,9 +297,9 @@ export function AddEditProductSheet({ open, onOpenChange, product }: Props) {
                 />
                 <span className="text-sm text-slate-500">{form.watch('unit')}</span>
               </div>
-              {PACK_SIZE_PRESETS[form.watch('unit')].length > 0 && (
+              {(PACK_SIZE_PRESETS[form.watch('unit')] ?? []).length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {PACK_SIZE_PRESETS[form.watch('unit')].map((size) => {
+                  {(PACK_SIZE_PRESETS[form.watch('unit')] ?? []).map((size) => {
                     const active = Number(form.watch('pack_size')) === size;
                     return (
                       <button

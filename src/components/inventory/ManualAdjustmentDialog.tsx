@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import type { StockMovement } from '@/types';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -28,9 +29,10 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   preselectProductId?: string;
+  movement?: StockMovement | null;
 }
 
-export function ManualAdjustmentDialog({ open, onOpenChange, preselectProductId }: Props) {
+export function ManualAdjustmentDialog({ open, onOpenChange, preselectProductId, movement }: Props) {
   const queryClient = useQueryClient();
   const { notify } = useActionNotify();
   const { data: products = [] } = useAllProducts();
@@ -40,24 +42,31 @@ export function ManualAdjustmentDialog({ open, onOpenChange, preselectProductId 
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
 
+  useEffect(() => {
+    if (!open) return;
+    const [savedReason, ...savedNotes] = (movement?.notes || '').split(' — ');
+    setProductId(movement?.product_id || preselectProductId || '');
+    setType(movement?.movement_type === 'adjustment_out' ? 'out' : 'in');
+    setQuantity(movement?.quantity || '');
+    setReason(savedReason || ''); setNotes(savedNotes.join(' — '));
+  }, [open, movement, preselectProductId]);
+
   const mutation = useMutation({
     mutationFn: async () => {
-      return api.post('/inventory/adjustment', {
+      const payload = {
         product_id: productId,
         type,
         quantity: Number(quantity),
         reason,
         notes: notes || undefined,
-      });
+      };
+      return movement ? api.put('/inventory/movements/' + movement.id, payload) : api.post('/inventory/adjustment', payload);
     },
     onSuccess: () => {
-      toast.success('Stock adjusted');
+      toast.success(movement ? 'Stock adjustment updated' : 'Stock adjusted');
       const product = products.find((p) => p.id === productId);
-      notify('Stock Adjusted', `${product?.name ?? 'Product'} stock ${type === 'in' ? 'added' : 'removed'}: ${quantity} ${product?.unit ?? ''}`);
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['stock-ledger'] });
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      notify(movement ? 'Stock Adjustment Updated' : 'Stock Adjusted', `${product?.name ?? 'Product'} stock ${type === 'in' ? 'added' : 'removed'}: ${quantity} ${product?.unit ?? ''}`);
+      queryClient.invalidateQueries();
       onOpenChange(false);
       setProductId(preselectProductId || '');
       setQuantity('');
@@ -69,23 +78,24 @@ export function ManualAdjustmentDialog({ open, onOpenChange, preselectProductId 
     },
   });
 
-  const valid = productId && Number(quantity) > 0 && reason.length > 0;
+  const valid = productId && Number(quantity) > 0 && reason.trim().length > 0 && reason.length <= 120;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Stock adjustment</DialogTitle>
+          <DialogTitle>{movement ? 'Edit stock adjustment' : 'Stock adjustment'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Product</Label>
-            <Select value={productId} onValueChange={setProductId}>
+            <Select value={productId} disabled={!!movement} onValueChange={setProductId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a product" />
               </SelectTrigger>
               <SelectContent>
+                {movement?.product && !products.some(p => p.id === movement.product_id) && <SelectItem value={movement.product_id}>{movement.product.name} (archived)</SelectItem>}
                 {products.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
@@ -110,8 +120,10 @@ export function ManualAdjustmentDialog({ open, onOpenChange, preselectProductId 
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Quantity</Label>
+              <Label>Quantity ({products.find(p => p.id === productId)?.unit || movement?.product?.unit || 'units'})</Label>
               <Input
+                aria-label="Adjustment quantity"
+                min="0.001"
                 type="number"
                 step="0.001"
                 value={quantity}
@@ -124,6 +136,8 @@ export function ManualAdjustmentDialog({ open, onOpenChange, preselectProductId 
           <div className="space-y-1.5">
             <Label>Reason</Label>
             <Input
+              aria-label="Adjustment reason"
+              maxLength={120}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="e.g. Stock count correction, damaged goods"

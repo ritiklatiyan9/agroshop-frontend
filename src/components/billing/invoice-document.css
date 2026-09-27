@@ -1,0 +1,59 @@
+.invoice-document { width: 186mm; flex: 0 0 186mm; background: white; color: #111; font: 10.5px/1.2 Arial, Helvetica, sans-serif; padding: 0; margin: 0 auto; }
+.invoice-document * { box-sizing: border-box; }
+.invoice-document .document-title { text-align: center; font-size: 16px; font-weight: 700; margin: 0 0 5mm; }
+.invoice-frame { border: 1px solid #333; }
+.invoice-document .pre-line { white-space: pre-line; }
+.invoice-document .number { text-align: right; font-variant-numeric: tabular-nums; }
+.invoice-document .small-text { font-size: 9px; margin-top: 2px; }
+.uniwest-heading { display: grid; grid-template-columns: 1fr 1fr; }
+.uniwest-parties { border-right: 1px solid #333; }
+.invoice-seller { padding: 2.5mm; min-height: 30mm; border-bottom: 1px solid #333; }
+.seller-brand { display: flex; gap: 2mm; }
+.seller-brand img { width: 18mm; max-height: 22mm; object-fit: contain; align-self: flex-start; }
+.seller-brand strong { font-size: 12px; }
+.invoice-party { padding: 2.5mm; min-height: 27mm; }
+.invoice-party > strong, .invoice-party > em { display: block; }
+.party-gstin { margin-top: 4mm; }
+.invoice-references { display: grid; grid-template-columns: 1fr 1fr; align-content: start; }
+.invoice-references > div { padding: 1.5mm 2mm; min-height: 8mm; border-right: 1px solid #333; border-bottom: 1px solid #333; }
+.invoice-references > div:nth-child(even) { border-right: 0; }
+.invoice-references span, .invoice-references strong { display: block; }
+.invoice-references .reference-wide { grid-column: span 2; border-right: 0; }
+.tejas-heading { position: relative; padding: 8mm 4mm 3mm; text-align: center; border-bottom: 1px solid #333; }
+.tejas-heading h1 { font-weight: 700; font-size: 14px; text-decoration: underline; margin: 0; }
+.tejas-heading h2 { font-weight: 700; font-size: 24px; margin: 1mm 0; }
+.tejas-heading .seller-gstin { position: absolute; left: 2mm; top: 2mm; font-weight: 700; }
+.copy-label { position: absolute; right: 2mm; top: 2mm; }
+.tejas-references, .tejas-parties { display: grid; grid-template-columns: 1fr 1fr; }
+.tejas-references > div { padding: 2mm; }
+.tejas-references > div:first-child, .tejas-parties > div:first-child { border-right: 1px solid #333; }
+.reference-line { display: grid; grid-template-columns: 42% 58%; }
+.tejas-parties { border-top: 1px solid #333; }
+.extra-shipping { border-top: 1px solid #333; }
+.invoice-document table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.invoice-items { border-top: 1px solid #333; }
+.invoice-items th { overflow-wrap: anywhere; text-align: left; vertical-align: top; padding: 2mm 1mm; border: 1px solid #333; border-top: 0; font-weight: 700; font-size: 10px; }
+.invoice-items th:first-child, .invoice-items td:first-child { border-left: 0; }
+.invoice-items th:last-child, .invoice-items td:last-child { border-right: 0; }
+.invoice-items td { vertical-align: top; padding: 1.2mm 1mm; border-left: 1px solid #333; border-right: 1px solid #333; overflow-wrap: anywhere; }
+.invoice-items .tax-line td { padding-top: 0.5mm; padding-bottom: 0.5mm; }
+.invoice-items tfoot { border-top: 1px solid #333; border-bottom: 1px solid #333; }
+.invoice-items tfoot td { padding-top: 2mm; padding-bottom: 2mm; }
+.amount-words { display: grid; grid-template-columns: 60% 40%; padding: 1.5mm 2mm; }
+.amount-words > div > span { display: block; font-size: 10px; }
+.amount-words > div > strong { display: block; }
+.balances { text-align: right; }
+.balances > div { display: flex; justify-content: space-between; gap: 2mm; font-size: 10px; }
+.tax-summary { font-size: 10px; }
+.tax-summary th, .tax-summary td { padding: 1mm; border: 1px solid #333; }
+.tax-summary th:first-child, .tax-summary td:first-child { border-left: 0; }
+.tax-summary th:last-child, .tax-summary td:last-child { border-right: 0; }
+.tax-words, .document-notes { padding: 2mm; }
+.invoice-footer { display: grid; grid-template-columns: 1fr 1fr; min-height: 32mm; border-top: 1px solid #333; }
+.invoice-footer > div { padding: 2mm; }
+.invoice-footer > div:first-child { border-right: 1px solid #333; display: flex; flex-direction: column; justify-content: space-between; gap: 3mm; }
+.signature-bank { display: flex; flex-direction: column; justify-content: space-between; }
+.signature { min-height: 14mm; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; position: relative; }
+.receiver-signature { align-self: flex-start; font-size: 9px; }
+.computer-generated { font-size: 10px; text-align: center; padding: 2mm; }
+@media print { .invoice-document { width: 100%; flex-basis: auto; box-shadow: none; } .invoice-document tr { break-inside: avoid; } .invoice-document thead { display: table-header-group; } .invoice-document tfoot { display: table-row-group; } .invoice-footer, .tax-summary, .amount-words { break-inside: avoid; } }

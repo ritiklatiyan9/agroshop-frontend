@@ -1,3 +1,5 @@
+import { printHtml, escapeHtml } from '@/lib/printHtml';
+import { useCurrentShop } from '@/store/authStore';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Download, Printer, PackageSearch, Boxes, IndianRupee, AlertTriangle, CalendarClock } from 'lucide-react';
@@ -20,6 +22,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 
 interface StockRow {
+  pack_label?: string | null; pack_size?: string | null; packing_type?: string | null; units_per_pack?: number | null;
   id: string; name: string; brand: string | null; category: string | null;
   unit: string; current_stock: string; min_stock_level: string;
   purchase_price: string; selling_price: string; expiry_date: string | null;
@@ -55,6 +58,7 @@ function rowBg(s: StockRow['status']) {
 }
 
 export function StockReportPage() {
+  const shop = useCurrentShop();
   const [categoryId, setCategoryId] = useState<string>('all');
   const [status, setStatus] = useState<'all' | 'low' | 'expiring' | 'expired'>('all');
   const { data: categories = [] } = useCategories();
@@ -81,6 +85,15 @@ export function StockReportPage() {
     } catch { toast.error('Export failed'); }
   }
 
+  function printStock() {
+    const rows = data?.data || [];
+    if (!rows.length) { toast.error('No stock to print'); return; }
+    const totals = new Map<string, number>();
+    for (const row of rows) totals.set(row.unit, (totals.get(row.unit) || 0) + Number(row.current_stock));
+    const pack = (row: StockRow) => row.pack_label || (row.pack_size ? `${Number(row.pack_size)} ${row.unit}` : '');
+    printHtml(`<!doctype html><html><head><meta charset="utf-8"><title>Stock statement</title><style>@page{size:A4;margin:12mm}body{font:12px Arial;color:#111}h1{font-size:15px;margin:0 0 4mm}table{border-collapse:collapse;width:100%}th,td{border:1px solid #333;padding:4px}th{font-weight:700}.number{text-align:right}thead{display:table-header-group}tr{break-inside:avoid}tfoot{font-weight:700}</style></head><body><h1>${escapeHtml(shop?.name || 'Agromart')}${shop?.city ? `, ${escapeHtml(shop.city)}` : ''}</h1><table><thead><tr><th colspan="3">STOCK</th><th>${new Date().toLocaleDateString('en-IN')}</th></tr><tr><th>S.No.</th><th>Particulars</th><th>PACKING</th><th>Closing</th></tr></thead><tbody>${rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.name)}${pack(row) ? ` (${escapeHtml(pack(row).toUpperCase())}${row.units_per_pack ? ` X ${row.units_per_pack}` : ''})` : ''}</td><td>${escapeHtml(row.packing_type || row.unit).toUpperCase()}</td><td class="number">${formatNumber(row.current_stock, 3)} ${escapeHtml(row.unit)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="3">Total</td><td class="number">${[...totals].map(([unit, total]) => `${formatNumber(total, 3)} ${escapeHtml(unit)}`).join('<br>')}</td></tr></tfoot></table></body></html>`);
+  }
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50">
 
@@ -91,7 +104,7 @@ export function StockReportPage() {
           description="Current stock with value at cost, low-stock flags, and expiry alerts."
           actions={
             <>
-              <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-2" /> Print / PDF</Button>
+              <Button variant="outline" size="sm" onClick={printStock}><Printer className="h-4 w-4 mr-2" /> Print / PDF</Button>
               <Button variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4 mr-2" /> Export CSV</Button>
             </>
           }
@@ -106,7 +119,7 @@ export function StockReportPage() {
             <p className="text-xs text-slate-500 mt-0.5">{data?.summary.total_products ?? '—'} products</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => window.print()} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 active:bg-slate-50"><Printer className="h-4 w-4" /></button>
+            <button onClick={printStock} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 active:bg-slate-50"><Printer className="h-4 w-4" /></button>
             <button onClick={exportCsv} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 active:bg-slate-50"><Download className="h-4 w-4" /></button>
           </div>
         </div>
@@ -226,7 +239,7 @@ export function StockReportPage() {
                   {data && data.data.length === 0 && <TableRow><TableCell colSpan={9} className="text-center py-10 text-slate-500">No products match the filters.</TableCell></TableRow>}
                   {data?.data.map((p) => (
                     <TableRow key={p.id} className={rowBg(p.status)}>
-                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell className="font-medium">{p.name}<div className="text-xs text-slate-500">{p.pack_label || (p.pack_size ? `${Number(p.pack_size)} ${p.unit}` : '')}{p.units_per_pack ? ` × ${p.units_per_pack}` : ''} {p.packing_type}</div></TableCell>
                       <TableCell className="hidden sm:table-cell">{p.brand || '—'}</TableCell>
                       <TableCell className="hidden sm:table-cell">{p.category || '—'}</TableCell>
                       <TableCell className="hidden md:table-cell">{p.unit}</TableCell>

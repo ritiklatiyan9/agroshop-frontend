@@ -1,3 +1,4 @@
+import { BillActions } from '@/components/billing/BillActions';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Printer } from 'lucide-react';
@@ -41,6 +42,7 @@ export function BillDetailSheet({ billId, open, onOpenChange }: Props) {
                 <Badge variant="danger" className="ml-2 text-xs">CANCELLED</Badge>
               )}
             </SheetTitle>
+            {data && <BillActions id={data.id} cancelled={data.status === 'cancelled'} onDeleted={() => onOpenChange(false)} />}
             {data && (
               <Button
                 size="sm"

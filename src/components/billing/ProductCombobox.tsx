@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { formatNumber } from '@/lib/utils';
+import { getProductDisplayName } from '@/lib/productName';
 import type { Product } from '@/types';
 
 interface Props {
@@ -78,9 +79,9 @@ export function ProductCombobox({ products, onSelect, placeholder = 'Search & ad
                   }}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-slate-900 truncate">{p.name}</div>
+                    <div className="font-medium text-slate-900 truncate">{getProductDisplayName(p)}</div>
                     <div className="text-xs text-slate-500 truncate">
-                      {p.brand || '—'} · {p.hsn_code || 'no HSN'} · {p.unit}
+                      {p.name} · {p.hsn_code || 'no HSN'} · {p.unit}
                     </div>
                   </div>
                   <div className="text-right shrink-0">

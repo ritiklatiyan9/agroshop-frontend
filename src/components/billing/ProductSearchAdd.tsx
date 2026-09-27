@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Package } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { formatCurrency, formatNumber } from '@/lib/utils';
+import { getProductDisplayName } from '@/lib/productName';
 import type { Product } from '@/types';
 
 interface Props {
@@ -25,6 +26,7 @@ export function ProductSearchAdd({ products, onSelect, alreadyAddedIds, autoFocu
       .filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
+          `${p.pack_label || p.pack_size || ''} ${p.unit} ${p.packing_type || ''}`.toLowerCase().includes(q) ||
           p.brand?.toLowerCase().includes(q) ||
           p.hsn_code?.toLowerCase().includes(q),
       )
@@ -114,7 +116,7 @@ export function ProductSearchAdd({ products, onSelect, alreadyAddedIds, autoFocu
                       <Package className="h-4 w-4 mt-0.5 text-slate-400 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900 truncate">{p.name}</span>
+                          <span className="font-medium text-slate-900 truncate">{getProductDisplayName(p)}</span>
                           {alreadyAdded && (
                             <span className="text-[10px] uppercase tracking-wide text-emerald-600 font-semibold">
                               added
@@ -122,7 +124,7 @@ export function ProductSearchAdd({ products, onSelect, alreadyAddedIds, autoFocu
                           )}
                         </div>
                         <div className="text-xs text-slate-500 truncate">
-                          {p.brand || '—'} · HSN {p.hsn_code || '—'} · {p.unit}
+                          {p.name} · HSN {p.hsn_code || '—'} · {p.unit}
                         </div>
                       </div>
                       <div className="text-right shrink-0">

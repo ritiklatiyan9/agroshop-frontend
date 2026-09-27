@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { openBillPrint } from '@/lib/printBill';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Trash2,
@@ -17,9 +17,14 @@ import {
   CreditCard,
   Receipt,
   ShoppingBag,
+  Plus,
 } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Input } from '@/components/ui/input';
+import { UnitInput } from '@/components/ui/unit-input';
+import { DocumentFields, EMPTY_DOCUMENT } from '@/components/billing/DocumentFields';
+import { PackingFields } from '@/components/billing/PackingFields';
+import { convertQuantity } from '@/lib/units';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,13 +43,19 @@ import { useParties } from '@/hooks/useParties';
 import { useCurrentShop } from '@/store/authStore';
 import { useActionNotify } from '@/hooks/useActionNotify';
 import { calculateBill, type BillItemInput, type BillType } from '@/lib/billCalculator';
-import { cn, formatCurrency } from '@/lib/utils';
+import { localDateInput, cn, formatCurrency } from '@/lib/utils';
 import { inrInWords } from '@/lib/numberToWords';
-import type { Party, Product, BillPaymentMode } from '@/types';
+import { getProductDisplayName } from '@/lib/productName';
+import type { Party, Product, BillPaymentMode, BillDetail, DocumentDetails } from '@/types';
 
 interface Line extends BillItemInput {
   uid: string;
   current_stock: number;
+  stock_unit?: string;
+}
+
+function stockLimit(row: Line) {
+  try { return convertQuantity(row.current_stock, row.stock_unit || row.unit, row.unit); } catch { return 0; }
 }
 
 function uid() {
@@ -60,14 +71,18 @@ interface Props {
   billType: BillType;
 }
 
-export function NewBillPage({ billType }: Props) {
+export function NewBillPage({ billType: initialBillType }: Props) {
+  const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
+  const [billType, setBillType] = useState(initialBillType);
+  const [loadedId, setLoadedId] = useState<string | null>(null);
   const navigate = useNavigate();
   const shop = useCurrentShop();
-  const { data: products = [] } = useAllProducts();
-  const { data: parties = [] } = useParties('customer');
+  const { data: products = [], isLoading: productsLoading } = useAllProducts();
+  const { data: parties = [], isLoading: partiesLoading } = useParties('customer');
   const { notify } = useActionNotify();
 
-  const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
+  const [billDate, setBillDate] = useState(localDateInput());
   const [party, setParty] = useState<Party | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
@@ -83,17 +98,45 @@ export function NewBillPage({ billType }: Props) {
   const [paidInput, setPaidInput] = useState('');
   const [paidTouched, setPaidTouched] = useState(false);
   const [notes, setNotes] = useState('');
+  const [roundOff, setRoundOff] = useState('0');
+  const [documentDetails, setDocumentDetails] = useState<DocumentDetails>({ ...EMPTY_DOCUMENT, place_of_supply: shop?.state || '', state_code: shop?.state_code || '' });
+  const { data: editBill, isLoading: editLoading, error: editError } = useQuery({
+    queryKey: ['bill-edit', id], enabled: !!id,
+    queryFn: async () => (await api.get<BillDetail>(`/bills/${id}`)).data,
+  });
+  useEffect(() => { if (!id) setBillType(initialBillType); }, [initialBillType, id]);
 
+  function selectParty(selected: Party | null) {
+    setParty(selected);
+    if (!selected) return;
+    setCustomerName(selected.name); setCustomerMobile(selected.mobile || '');
+    setCustomerGstin(selected.gstin || ''); setCustomerAddress(selected.address || '');
+    setDocumentDetails(details => ({ ...details, place_of_supply: selected.state || shop?.state || '', state_code: selected.state_code || shop?.state_code || '' }));
+  }
   useEffect(() => {
-    if (party) {
-      setCustomerName(party.name);
-      setCustomerMobile(party.mobile || '');
-      setCustomerGstin(party.gstin || '');
-      setCustomerAddress(party.address || '');
-    }
-  }, [party]);
+    if (!editBill || loadedId === id || productsLoading || partiesLoading) return;
+    setLoadedId(id || null); setBillType(editBill.bill_type); setBillDate(editBill.bill_date);
+    setParty(parties.find(p => p.id === editBill.party_id) || (editBill.party ? { ...editBill.party, type: 'customer', opening_balance: '0', current_balance: '0', is_active: false, created_at: '' } : null));
+    setCustomerName(editBill.customer_name || editBill.party?.name || ''); setCustomerMobile(editBill.customer_mobile || '');
+    setCustomerGstin(editBill.customer_gstin || ''); setCustomerAddress(editBill.customer_address || '');
+    setDocumentDetails({ ...EMPTY_DOCUMENT, ...editBill.document_details }); setNotes(editBill.notes || '');
+    setDiscountInput(editBill.discount_amount); setDiscountType('flat'); setRoundOff(editBill.round_off || '0');
+    setPaymentMode(editBill.payment_mode); setPaidInput(editBill.paid_amount); setPaidTouched(true);
+    setItems(editBill.items.map(it => {
+      const product = products.find(p => p.id === it.product_id);
+      let returned = Number(it.quantity);
+      try { returned = convertQuantity(Number(it.quantity), it.unit, product?.unit || it.unit); } catch { /* backend validates unit compatibility */ }
+      return { uid: it.id, product_id: it.product_id, product_name: it.product_name, hsn_code: it.hsn_code,
+        unit: it.unit, quantity: Number(it.quantity), rate: Number(it.rate), gst_rate: Number(it.gst_rate),
+        pack_label: it.pack_label, packing_type: it.packing_type, units_per_pack: it.units_per_pack, pack_count: it.pack_count == null ? null : Number(it.pack_count),
+        list_price: Number(it.list_price || 0), discount_percent: Number(it.discount_percent || 0),
+        stock_unit: product?.unit || it.unit, current_stock: Number(product?.current_stock || 0) + returned,
+      };
+    }));
+  }, [editBill, id, loadedId, products, productsLoading, parties, partiesLoading]);
 
   const calcItems: BillItemInput[] = items.map((i) => ({
+    ...i,
     product_id: i.product_id,
     product_name: i.product_name,
     hsn_code: i.hsn_code,
@@ -107,7 +150,7 @@ export function NewBillPage({ billType }: Props) {
     const n = Number(discountInput) || 0;
     if (n <= 0) return 0;
     if (discountType === 'percent') {
-      const subtotal = calcItems.reduce((s, i) => s + i.quantity * i.rate, 0);
+      const subtotal = calcItems.reduce((s, i) => s + i.quantity * i.rate * (1 - (i.discount_percent || 0) / 100), 0);
       return Math.round(subtotal * (n / 100) * 100) / 100;
     }
     return n;
@@ -116,8 +159,8 @@ export function NewBillPage({ billType }: Props) {
   const gstBeforeDiscount = shop?.gst_before_discount ?? false;
 
   const summary = useMemo(
-    () => calculateBill(calcItems, discountAmount, billType, gstBeforeDiscount),
-    [calcItems, discountAmount, billType, gstBeforeDiscount],
+    () => calculateBill(calcItems, discountAmount, billType, gstBeforeDiscount, Number(roundOff) || 0),
+    [calcItems, discountAmount, billType, gstBeforeDiscount, roundOff],
   );
 
   const paidAmount = Math.max(0, Number(paidInput) || 0);
@@ -148,13 +191,17 @@ export function NewBillPage({ billType }: Props) {
       {
         uid: uid(),
         product_id: p.id,
-        product_name: p.name,
+        product_name: getProductDisplayName(p),
         hsn_code: p.hsn_code,
         unit: p.unit,
         quantity: 1,
         rate: Number(p.selling_price),
         gst_rate: Number(p.gst_rate),
         current_stock: Number(p.current_stock),
+        stock_unit: p.unit,
+        pack_label: p.pack_label || (p.pack_size ? `${Number(p.pack_size)} ${p.unit}` : null),
+        packing_type: p.packing_type,
+        units_per_pack: p.units_per_pack,
       },
     ]);
   }
@@ -204,10 +251,13 @@ export function NewBillPage({ billType }: Props) {
         customer_address: customerAddress || null,
         customer_gstin: customerGstin || null,
         discount_amount: discountAmount,
+        round_off: Number(roundOff) || 0,
+        document_details: documentDetails,
         payment_mode: paymentMode,
         paid_amount: paidAmount,
         notes: notes || null,
         items: items.map((i) => ({
+          ...i,
           product_id: i.product_id ?? null,
           product_name: i.product_name,
           hsn_code: i.hsn_code ?? null,
@@ -217,7 +267,7 @@ export function NewBillPage({ billType }: Props) {
           gst_rate: Number(i.gst_rate),
         })),
       };
-      const res = await api.post('/bills', payload);
+      const res = id ? await api.put(`/bills/${id}`, payload) : await api.post('/bills', payload);
       return res.data as { id: string; bill_number: string };
     },
   });
@@ -237,8 +287,9 @@ export function NewBillPage({ billType }: Props) {
     }
     try {
       const bill = await mutation.mutateAsync();
-      toast.success(`Bill ${bill.bill_number} created`);
-      notify('Bill Created', `${bill.bill_number} for ${customerName} saved successfully`);
+      toast.success(`Bill ${bill.bill_number} ${id ? 'updated' : 'created'}`);
+      await queryClient.invalidateQueries();
+      notify(id ? 'Bill Updated' : 'Bill Created', `${bill.bill_number} for ${customerName} saved successfully`);
       if (printAfter || shop?.auto_print_after_save) {
         openBillPrint(bill.id, navigate);
       }
@@ -259,8 +310,10 @@ export function NewBillPage({ billType }: Props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, customerName, paidAmount, billDate, party, paymentMode, discountInput, discountType, notes]);
+  }, [items, customerName, paidAmount, billDate, party, paymentMode, discountInput, discountType, notes, roundOff, documentDetails, customerMobile, customerAddress, customerGstin, billType, shop, id]);
 
+  if (id && editLoading) return <div className="p-6">Loading bill for editing…</div>;
+  if (id && (editError || editBill?.status === 'cancelled')) return <div className="p-6 text-red-600">{editError ? 'Unable to load this bill.' : 'Cancelled bills cannot be edited.'}</div>;
   const isCredit = paymentMode === 'credit';
 
   return (
@@ -295,7 +348,7 @@ export function NewBillPage({ billType }: Props) {
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
                 <h1 className="truncate text-sm font-bold leading-tight text-slate-900 sm:text-base sm:leading-none">
-                  New {billType === 'gst' ? 'GST' : 'Non-GST'} bill
+                  {id ? 'Edit' : 'New'} {billType === 'gst' ? 'GST' : 'Non-GST'} bill
                 </h1>
                 <Badge className="hidden shrink-0 sm:inline-flex" variant={billType === 'gst' ? 'success' : 'info'}>
                   {billType === 'gst' ? 'Tax invoice' : 'Cash memo'}
@@ -413,14 +466,16 @@ export function NewBillPage({ billType }: Props) {
                   Bill #
                 </Label>
                 <div className="h-10 flex items-center rounded-md border border-dashed border-slate-200 bg-white px-3 text-sm text-slate-400 italic">
-                  auto-generated on save
+                  {editBill?.bill_number || 'auto-generated on save'}
                 </div>
               </div>
             </div>
           </Section>
 
+          <DocumentFields value={documentDetails} onChange={setDocumentDetails} />
+
           <Section icon={User} title="Customer" description="Pick a saved party or fill walk-in details">
-            <PartySearchSelect parties={parties} value={party} onChange={setParty} />
+            <PartySearchSelect parties={parties} value={party} onChange={selectParty} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
               <FieldLabel label="Name *" required>
                 <Input
@@ -456,6 +511,7 @@ export function NewBillPage({ billType }: Props) {
             </div>
           </Section>
 
+          <Button variant="outline" size="sm" onClick={() => setItems(rows => [...rows, { uid: uid(), product_name: '', unit: 'piece', quantity: 1, rate: 0, gst_rate: 0, current_stock: 0 }])}><Plus className="mr-2 h-4 w-4" /> Add manual item</Button>
           <Section
             icon={ShoppingBag}
             title="Items"
@@ -537,9 +593,9 @@ export function NewBillPage({ billType }: Props) {
                       const qty = Number(row.quantity) || 0;
                       const rate = Number(row.rate) || 0;
                       const gstRate = billType === 'gst' ? Number(row.gst_rate) || 0 : 0;
-                      const taxable = qty * rate;
+                      const taxable = qty * rate * (1 - (row.discount_percent || 0) / 100);
                       const lineAmount = taxable + (taxable * gstRate) / 100;
-                      const stockExceeded = row.product_id && qty > row.current_stock;
+                      const stockExceeded = row.product_id && qty > stockLimit(row);
                       return (
                         <tr
                           key={row.uid}
@@ -559,9 +615,10 @@ export function NewBillPage({ billType }: Props) {
                               }
                               className="h-9 border-slate-200/0 hover:border-slate-200 focus:border-emerald-300 focus:ring-emerald-200 bg-transparent focus:bg-white"
                             />
+                            <PackingFields value={row} onChange={patch => updateLine(row.uid, patch)} />
                             {row.product_id && (
                               <div className="text-[10px] text-slate-400 ml-2 mt-0.5">
-                                Stock: {row.current_stock}
+                                Stock: {stockLimit(row)}
                               </div>
                             )}
                           </td>
@@ -592,14 +649,14 @@ export function NewBillPage({ billType }: Props) {
                             />
                             {stockExceeded && (
                               <div className="text-[10px] text-red-600 mt-0.5 ml-1 font-medium">
-                                ⚠ max {row.current_stock}
+                                ⚠ max {stockLimit(row)}
                               </div>
                             )}
                           </td>
                           <td className="hidden sm:table-cell px-1.5 py-1.5">
-                            <Input
+                            <UnitInput
                               value={row.unit}
-                              onChange={(e) => updateLine(row.uid, { unit: e.target.value })}
+                              onValueChange={unit => updateLine(row.uid, { unit })}
                               className="h-9 text-xs border-slate-200/0 hover:border-slate-200 focus:border-emerald-300 focus:ring-emerald-200 bg-transparent focus:bg-white"
                             />
                           </td>
@@ -764,6 +821,9 @@ export function NewBillPage({ billType }: Props) {
             )}
           </div>
 
+          <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2">
+            <Label className="text-xs">Round off (₹)</Label><Input aria-label="Round off" type="number" min="-1" max="1" step="0.01" value={roundOff} onChange={e => setRoundOff(e.target.value)} className="h-8 w-24 text-right" />
+          </div>
           <div className="px-4 py-3 bg-gradient-to-br from-slate-900 to-slate-800 text-white flex-shrink-0">
             <div className="flex justify-between items-baseline">
               <span className="text-[10px] uppercase tracking-[0.14em] text-slate-400 font-semibold">
@@ -961,9 +1021,9 @@ function MobileItemCard({
   const qty = Number(row.quantity) || 0;
   const rate = Number(row.rate) || 0;
   const gstRate = billType === 'gst' ? Number(row.gst_rate) || 0 : 0;
-  const taxable = qty * rate;
+  const taxable = qty * rate * (1 - (row.discount_percent || 0) / 100);
   const lineAmount = taxable + (taxable * gstRate) / 100;
-  const stockExceeded = Boolean(row.product_id && qty > row.current_stock);
+  const stockExceeded = Boolean(row.product_id && qty > stockLimit(row));
 
   return (
     <div
@@ -983,7 +1043,7 @@ function MobileItemCard({
             className="h-9 min-w-0 bg-white font-medium"
           />
           {row.product_id && (
-            <div className="px-1 text-[10px] text-slate-400">Stock: {row.current_stock}</div>
+            <div className="px-1 text-[10px] text-slate-400">Stock: {stockLimit(row)}</div>
           )}
         </div>
         <Button
@@ -1035,17 +1095,18 @@ function MobileItemCard({
           />
         </FieldLabel>
         <FieldLabel label="Unit" className="col-span-2 min-[420px]:col-span-1">
-          <Input
+          <UnitInput
             value={row.unit}
-            onChange={(e) => onUpdate(row.uid, { unit: e.target.value })}
+            onValueChange={unit => onUpdate(row.uid, { unit })}
             className="h-9 text-xs"
           />
         </FieldLabel>
       </div>
 
+      <PackingFields value={row} onChange={patch => onUpdate(row.uid, patch)} />
       {stockExceeded && (
         <div className="mt-2 rounded-md border border-red-100 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">
-          Max stock: {row.current_stock}
+          Max stock: {stockLimit(row)}
         </div>
       )}
 

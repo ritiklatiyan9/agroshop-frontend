@@ -17,3 +17,8 @@ export function openBillPrint(
     window.open(`/bills/print/${billId}`, '_blank');
   }
 }
+
+export function openPurchasePrint(id: string, navigate: (path: string) => void) {
+  if (Capacitor.isNativePlatform()) navigate(`/purchases/print/${id}`);
+  else window.open(`/purchases/print/${id}`, '_blank');
+}

@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom';
+import { UnitSettings } from '@/components/settings/UnitSettings';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -13,6 +15,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 interface FormState {
+  country: string;
+  state_code: string;
+  pan: string;
+  registration_type: string;
+  bank_branch: string;
+  declaration: string;
+
   shop_name: string;
   shop_phone: string;
   shop_email: string;
@@ -30,6 +39,13 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
+  country: 'India',
+  state_code: '',
+  pan: '',
+  registration_type: 'Regular',
+  bank_branch: '',
+  declaration: '',
+
   shop_name: '',
   shop_phone: '',
   shop_email: '',
@@ -47,6 +63,7 @@ const EMPTY: FormState = {
 };
 
 export function ShopProfilePage() {
+  const navigate = useNavigate();
   const shop = useCurrentShop();
   const upsertShop = useAuthStore((s) => s.upsertShop);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,6 +74,13 @@ export function ShopProfilePage() {
   useEffect(() => {
     if (shop) {
       setForm({
+        country: shop.country || 'India',
+        state_code: shop.state_code || '',
+        pan: shop.pan || '',
+        registration_type: shop.registration_type || 'Regular',
+        bank_branch: shop.bank_branch || '',
+        declaration: shop.declaration || '',
+
         shop_name: shop.name ?? '',
         shop_phone: shop.phone ?? '',
         shop_email: shop.email ?? '',
@@ -119,12 +143,13 @@ export function ShopProfilePage() {
         <PageHeader
           title="Shop profile"
           description="These details appear on bills, invoices, and reports."
-          actions={
+          actions={<>
+            <Button variant="outline" onClick={() => navigate('/admin/shops')}>Edit / delete shops</Button>
             <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save changes
             </Button>
-          }
+          </>}
         />
 
         <Section icon={Store} title="Identity" description="Logo and brand details printed on bills.">
@@ -234,6 +259,8 @@ export function ShopProfilePage() {
           </div>
         </Section>
 
+        <Section icon={FileText} title="Registration and declaration" description="Mailing, tax and bank details shown on printed documents."><div className="grid grid-cols-1 gap-3 md:grid-cols-2"><Field label="Country"><Input value={form.country} onChange={e => update('country', e.target.value)} /></Field><Field label="State code"><Input value={form.state_code} onChange={e => update('state_code', e.target.value)} /></Field><Field label="PAN / IT number"><Input value={form.pan} onChange={e => update('pan', e.target.value)} /></Field><Field label="Registration type"><Input value={form.registration_type} onChange={e => update('registration_type', e.target.value)} /></Field><Field label="Bank branch"><Input value={form.bank_branch} onChange={e => update('bank_branch', e.target.value)} /></Field><Field label="Declaration"><Textarea rows={3} value={form.declaration} onChange={e => update('declaration', e.target.value)} /></Field></div></Section>
+        <UnitSettings />
         <Section
           icon={Building}
           title="Bank details"

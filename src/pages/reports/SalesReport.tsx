@@ -1,3 +1,4 @@
+import { BillActions } from '@/components/billing/BillActions';
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Download, Eye, Printer, Search, X, BarChart3 } from 'lucide-react';
@@ -226,14 +227,14 @@ export function SalesReportPage() {
                     <Badge variant={statusVariant(b.payment_status)} className="text-[10px]">{b.payment_status}</Badge>
                   </div>
                   <p className="text-sm font-medium text-slate-700 mt-1 truncate">{b.customer_name || b.party?.name || 'Walk-in'}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{new Date(b.bill_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <p className="mt-1 text-xs text-slate-500">{[b.quantity_summary, b.packing_summary].filter(Boolean).join(' · ')}</p><p className="text-xs text-slate-400 mt-0.5">{new Date(b.bill_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-mono font-bold text-slate-900">{formatCurrency(b.grand_total)}</p>
                   {gst > 0 && <p className="text-xs text-slate-400 mt-0.5 font-mono">GST {formatCurrency(gst)}</p>}
                 </div>
               </div>
-              <div className="flex justify-end mt-2 pt-2 border-t border-slate-50">
+              <div className="flex items-center justify-end mt-2 pt-2 border-t border-slate-50"><BillActions id={b.id} module="reports_sales" />
                 <button onClick={(e) => { e.stopPropagation(); setViewBillId(b.id); }} className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
                   <Eye className="h-3.5 w-3.5" /> View Bill
                 </button>
@@ -318,7 +319,7 @@ export function SalesReportPage() {
                         <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(gst)}</TableCell>
                         <TableCell className="text-right font-mono">{formatCurrency(b.grand_total)}</TableCell>
                         <TableCell><Badge variant={statusVariant(b.payment_status)}>{b.payment_status}</Badge></TableCell>
-                        <TableCell><Button variant="ghost" size="icon" onClick={() => setViewBillId(b.id)}><Eye className="h-4 w-4" /></Button></TableCell>
+                        <TableCell><BillActions id={b.id} module="reports_sales" /><Button variant="ghost" size="icon" onClick={() => setViewBillId(b.id)}><Eye className="h-4 w-4" /></Button></TableCell>
                       </TableRow>
                     );
                   })}

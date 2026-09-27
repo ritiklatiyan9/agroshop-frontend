@@ -1,3 +1,4 @@
+import { PurchasePrintPage } from '@/pages/PurchasePrint';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -47,6 +48,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
 
+        <Route path="/purchases/print/:id" element={<ProtectedRoute><PurchasePrintPage /></ProtectedRoute>} />
         <Route path="/bills/print/:id" element={<ProtectedRoute><BillPrintPage /></ProtectedRoute>} />
 
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -58,8 +60,9 @@ export default function App() {
           <Route path="/purchases" element={<PurchasesPage />} />
 
           <Route path="/bills" element={<BillHistoryPage />} />
-          <Route path="/bills/new-gst" element={<NewBillPage billType="gst" />} />
-          <Route path="/bills/new" element={<NewBillPage billType="non_gst" />} />
+          <Route path="/bills/:id/edit" element={<NewBillPage key="edit-bill" billType="gst" />} />
+          <Route path="/bills/new-gst" element={<NewBillPage key="new-gst" billType="gst" />} />
+          <Route path="/bills/new" element={<NewBillPage key="new-nongst" billType="non_gst" />} />
           <Route path="/outstanding" element={<OutstandingPage />} />
 
           <Route path="/parties" element={<PartiesPage />} />

@@ -1,12 +1,14 @@
+import { PurchaseActions } from '@/components/inventory/PurchaseActions';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, FileText, Pencil } from 'lucide-react';
+import { ExternalLink, FileText } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatNumber } from '@/lib/utils';
+import { getProductDisplayName } from '@/lib/productName';
 import type { Purchase } from '@/types';
 
 interface Props {
@@ -28,6 +30,7 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
     enabled: !!purchaseId && open,
   });
 
+  const order = data?.document_type === 'purchase_order';
   const balance = data
     ? Number(data.total_amount) - Number(data.paid_amount)
     : 0;
@@ -35,21 +38,11 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl flex flex-col p-0 gap-0" style={{ maxHeight: '100dvh' }}>
+        {data && <div className="px-4 pt-3"><PurchaseActions purchase={data} onEdit={onEdit} onDeleted={() => onOpenChange(false)} /></div>}
         <SheetHeader className="px-4 pt-5 pb-3 border-b border-slate-100 shrink-0 flex flex-row items-center justify-between pr-8">
           <SheetTitle>
-            Purchase {data?.invoice_number ? `· ${data.invoice_number}` : ''}
+            {order ? 'Purchase order' : 'Purchase'} {(data?.order_number || data?.invoice_number) ? `· ${data?.order_number || data?.invoice_number}` : ''}
           </SheetTitle>
-          {data && onEdit && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              onClick={() => onEdit(data.id)}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Button>
-          )}
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -69,22 +62,22 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Invoice #</div>
-                <div className="font-mono">{data.invoice_number || '—'}</div>
+                <div className="text-xs text-slate-500">{order ? 'Order #' : 'Invoice #'}</div>
+                <div className="font-mono">{data.order_number || data.invoice_number || '—'}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Payment</div>
+                <div className="text-xs text-slate-500">{order ? 'Status' : 'Payment'}</div>
                 <div>
                   <Badge
                     variant={
-                      data.payment_status === 'paid'
+                      order ? 'info' : data.payment_status === 'paid'
                         ? 'success'
                         : data.payment_status === 'unpaid'
                         ? 'danger'
                         : 'warning'
                     }
                   >
-                    {data.payment_status} · {data.payment_mode}
+                    {order ? 'Ordered' : `${data.payment_status} · ${data.payment_mode}`}
                   </Badge>
                 </div>
               </div>
@@ -107,14 +100,14 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
                     {(data.items ?? []).map((it) => (
                       <tr key={it.id} className="border-t border-slate-100">
                         <td className="p-2">
-                          <div className="font-medium">{it.product?.name ?? '—'}</div>
+                          <div className="font-medium">{it.product_name || getProductDisplayName(it.product)}</div>
                           <div className="text-xs text-slate-400">
                             {it.batch_number ? `Batch ${it.batch_number}` : '—'}
                             {it.expiry_date && ` · exp ${new Date(it.expiry_date).toLocaleDateString('en-IN')}`}
                           </div>
                         </td>
                         <td className="p-2 text-right font-mono">
-                          {formatNumber(it.quantity, 2)} {it.product?.unit ?? ''}
+                          {formatNumber(it.quantity, 2)} {it.unit || it.product?.unit || ''}
                         </td>
                         <td className="p-2 text-right font-mono">
                           {formatCurrency(it.rate)}
@@ -143,11 +136,12 @@ export function PurchaseDetailSheet({ purchaseId, open, onOpenChange, onEdit }: 
                 </>
               )}
               <Row label={data.gst_enabled ? 'Grand total' : 'Total amount'} value={formatCurrency(data.total_amount)} />
-              <Row label="Paid" value={formatCurrency(data.paid_amount)} />
+              {!order && <><Row label="Paid" value={formatCurrency(data.paid_amount)} />
               <div className="flex justify-between font-bold border-t pt-1.5 mt-1.5">
                 <span>Balance due</span>
                 <span className="font-mono text-amber-700">{formatCurrency(balance)}</span>
-              </div>
+              </div></>}
+              {order && <p className="pt-2 text-xs text-sky-700">Stock and supplier balances update when this order is received.</p>}
             </section>
 
             {data.notes && (

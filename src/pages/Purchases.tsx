@@ -1,7 +1,8 @@
+import { PurchaseActions } from '@/components/inventory/PurchaseActions';
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
-  Eye, Pencil, Plus, ShoppingCart, Wallet,
+  Eye, Plus, ShoppingCart, Wallet,
   ChevronDown, ChevronUp, SlidersHorizontal,
   CheckCircle2, Clock, AlertCircle,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ interface PurchaseSummary {
 }
 
 export function PurchasesPage() {
+  const [documentType, setDocumentType] = useState<'purchase' | 'purchase_order'>('purchase');
   const [newOpen, setNewOpen] = useState(false);
   const [viewId, setViewId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
@@ -48,12 +50,13 @@ export function PurchasesPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['purchases', { page, paymentStatus, fromDate, toDate }],
+    queryKey: ['purchases', { page, paymentStatus, fromDate, toDate, documentType }],
     queryFn: async () => {
       const res = await api.get<{ data: Purchase[]; summary: PurchaseSummary; pagination: Pagination }>('/purchases', {
         params: {
           page,
           page_size: 25,
+          document_type: documentType,
           payment_status: paymentStatus !== 'all' ? paymentStatus : undefined,
           from_date: fromDate || undefined,
           to_date: toDate || undefined,
@@ -90,7 +93,7 @@ export function PurchasesPage() {
           description="All stock purchases from suppliers."
           actions={
             <Button onClick={() => setNewOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> New purchase
+              <Plus className="mr-2 h-4 w-4" /> New {documentType === 'purchase_order' ? 'purchase order' : 'purchase'}
             </Button>
           }
         />
@@ -102,15 +105,16 @@ export function PurchasesPage() {
         <p className="text-xs text-slate-500 mt-0.5">Stock IN from suppliers</p>
       </div>
 
+      <div className="flex shrink-0 gap-2 px-4 pt-3 lg:px-6">{(['purchase', 'purchase_order'] as const).map(type => <Button key={type} size="sm" variant={documentType === type ? 'default' : 'outline'} onClick={() => { setDocumentType(type); setPaymentStatus('all'); setPage(1); }}>{type === 'purchase' ? 'Received purchases' : 'Purchase orders'}</Button>)}</div>
       {/* ── Filter cards (head) ── */}
-      <div className="flex-shrink-0 px-4 lg:px-6 pt-3 pb-2">
+      {documentType === 'purchase' && <div className="flex-shrink-0 px-4 lg:px-6 pt-3 pb-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3">
           <StatCard label="All" value={summary?.all ?? pagination?.total ?? '—'} icon={ShoppingCart} active={paymentStatus === 'all'} onClick={() => setStatus('all')} />
           <StatCard label="Paid" value={summary?.paid ?? '—'} icon={CheckCircle2} tone="success" active={paymentStatus === 'paid'} onClick={() => setStatus('paid')} />
           <StatCard label="Partial" value={summary?.partial ?? '—'} icon={Clock} tone="warning" active={paymentStatus === 'partial'} onClick={() => setStatus('partial')} />
           <StatCard label="Unpaid" value={summary?.unpaid ?? '—'} icon={AlertCircle} tone="danger" active={paymentStatus === 'unpaid'} onClick={() => setStatus('unpaid')} />
         </div>
-      </div>
+      </div>}
 
       {/* ── Mobile date filter ── */}
       <div className="lg:hidden flex-shrink-0 px-4 pb-2 space-y-2">
@@ -178,14 +182,14 @@ export function PurchasesPage() {
                     <span className="font-semibold text-sm text-slate-800">
                       {p.party?.name || 'Unknown Supplier'}
                     </span>
-                    <Badge variant={statusVariant(p.payment_status)} className="text-[10px]">
-                      {p.payment_status}
+                    <Badge variant={p.document_type === 'purchase_order' ? 'info' : statusVariant(p.payment_status)} className="text-[10px]">
+                      {p.document_type === 'purchase_order' ? 'Ordered' : p.payment_status}
                     </Badge>
                     {p.bill_image_url && <Badge variant="info" className="text-[10px]">Bill</Badge>}
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
                     {new Date(p.purchase_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    {p.invoice_number && <span className="ml-2 font-mono">#{p.invoice_number}</span>}
+                    {(p.order_number || p.invoice_number) && <span className="ml-2 font-mono">#{p.order_number || p.invoice_number}</span>}
                   </p>
                   {p.item_count && (
                     <p className="text-xs text-slate-400 mt-0.5">{p.item_count} item{p.item_count !== 1 ? 's' : ''}</p>
@@ -193,27 +197,21 @@ export function PurchasesPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-mono font-bold text-slate-900">{formatCurrency(p.total_amount)}</p>
-                  {balance > 0 && (
+                  {p.document_type !== 'purchase_order' && balance > 0 && (
                     <p className="text-xs font-mono text-amber-600 mt-0.5">Due {formatCurrency(balance)}</p>
                   )}
                 </div>
               </div>
 
               {/* Quick actions */}
-              <div className="flex gap-2 mt-3 pt-3 border-t border-slate-50" onClick={(e) => e.stopPropagation()}>
+              <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-50" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => setViewId(p.id)}
                   className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-slate-50 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-100"
                 >
                   <Eye className="h-3.5 w-3.5" /> View
                 </button>
-                <button
-                  onClick={() => setEditId(p.id)}
-                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-slate-50 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-100"
-                >
-                  <Pencil className="h-3.5 w-3.5" /> Edit
-                </button>
-                {p.payment_status !== 'paid' && (
+                {p.document_type !== 'purchase_order' && p.payment_status !== 'paid' && (
                   <button
                     onClick={() => setPayPurchase(p)}
                     className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-50 py-1.5 text-xs font-medium text-emerald-700 active:bg-emerald-100"
@@ -221,6 +219,7 @@ export function PurchasesPage() {
                     <Wallet className="h-3.5 w-3.5" /> Pay
                   </button>
                 )}
+                <PurchaseActions showLabels purchase={p} onEdit={setEditId} />
               </div>
             </div>
           );
@@ -258,7 +257,7 @@ export function PurchasesPage() {
         className="lg:hidden fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3.5 shadow-xl text-white text-sm font-semibold active:scale-95 transition-transform"
       >
         <Plus className="h-5 w-5" />
-        New Purchase
+        New {documentType === 'purchase_order' ? 'order' : 'purchase'}
       </button>
 
       {/* ── Desktop layout ── */}
@@ -286,7 +285,7 @@ export function PurchasesPage() {
                     <TableHead className="hidden md:table-cell text-right">Paid</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="hidden md:table-cell">Bill</TableHead>
-                    <TableHead className="w-28"></TableHead>
+                    <TableHead className="sticky right-0 bg-slate-50 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -300,25 +299,25 @@ export function PurchasesPage() {
                     <TableRow key={p.id} className="cursor-pointer hover:bg-slate-50/60" onClick={() => setViewId(p.id)}>
                       <TableCell className="text-sm whitespace-nowrap">{new Date(p.purchase_date).toLocaleDateString('en-IN')}</TableCell>
                       <TableCell className="font-medium">{p.party?.name || '—'}</TableCell>
-                      <TableCell className="hidden sm:table-cell font-mono text-xs">{p.invoice_number || '—'}</TableCell>
+                      <TableCell className="hidden sm:table-cell font-mono text-xs">{p.order_number || p.invoice_number || '—'}</TableCell>
                       <TableCell className="hidden sm:table-cell text-right">{p.item_count ?? '—'}</TableCell>
                       <TableCell className="text-right font-mono">{formatCurrency(p.total_amount)}</TableCell>
-                      <TableCell className="hidden md:table-cell text-right font-mono">{formatCurrency(p.paid_amount)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right font-mono">{p.document_type === 'purchase_order' ? '—' : formatCurrency(p.paid_amount)}</TableCell>
                       <TableCell>
-                        <Badge variant={statusVariant(p.payment_status)}>{p.payment_status}</Badge>
+                        <Badge variant={p.document_type === 'purchase_order' ? 'info' : statusVariant(p.payment_status)}>{p.document_type === 'purchase_order' ? 'Ordered' : p.payment_status}</Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {p.bill_image_url ? <Badge variant="info">Uploaded</Badge> : <span className="text-xs text-slate-300">—</span>}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center">
-                          {p.payment_status !== 'paid' && (
+                      <TableCell className="sticky right-0 bg-white" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          {p.document_type !== 'purchase_order' && p.payment_status !== 'paid' && (
                             <Button variant="ghost" size="icon" title="Record payment" onClick={() => setPayPurchase(p)}>
                               <Wallet className="h-4 w-4 text-emerald-600" />
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" title="View purchase" onClick={() => setViewId(p.id)}><Eye className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title="Edit purchase" onClick={() => setEditId(p.id)}><Pencil className="h-4 w-4 text-slate-500" /></Button>
+                          <PurchaseActions showLabels purchase={p} onEdit={setEditId} />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -340,7 +339,7 @@ export function PurchasesPage() {
         </Card>
       </div>
 
-      <NewPurchaseDialog open={newOpen} onOpenChange={setNewOpen} />
+      <NewPurchaseDialog defaultDocumentType={documentType} open={newOpen} onOpenChange={setNewOpen} />
       <PurchaseDetailSheet
         purchaseId={viewId}
         open={!!viewId}

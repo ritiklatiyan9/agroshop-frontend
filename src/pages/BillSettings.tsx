@@ -20,6 +20,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import type { ThermalSize } from '@/types';
 
 interface BillSettingsForm {
+  invoice_layout: 'uniwest' | 'tejas';
   gst_bill_prefix: string;
   non_gst_bill_prefix: string;
   default_payment_mode: string;
@@ -35,6 +36,7 @@ interface BillSettingsForm {
 }
 
 const EMPTY: BillSettingsForm = {
+  invoice_layout: 'uniwest',
   gst_bill_prefix: 'INV',
   non_gst_bill_prefix: 'BILL',
   default_payment_mode: 'cash',
@@ -57,6 +59,7 @@ export function BillSettingsPage() {
   useEffect(() => {
     if (!shop) return;
     setForm({
+      invoice_layout: shop.invoice_layout || 'uniwest',
       gst_bill_prefix: shop.gst_bill_prefix ?? 'INV',
       non_gst_bill_prefix: shop.non_gst_bill_prefix ?? 'BILL',
       default_payment_mode: shop.default_payment_mode ?? 'cash',
@@ -104,6 +107,9 @@ export function BillSettingsPage() {
           }
         />
 
+        <Section icon={Receipt} title="A4 invoice layout" description="Choose one of your reference layouts. This also applies to purchase orders.">
+          <Select value={form.invoice_layout} onValueChange={value => update('invoice_layout', value as 'uniwest' | 'tejas')}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uniwest">Uniwest — delivery details, balances and bank footer</SelectItem><SelectItem value="tejas">Tejas — centered header, billed-to and shipped-to</SelectItem></SelectContent></Select>
+        </Section>
         <Section
           icon={Hash}
           title="Bill numbering"

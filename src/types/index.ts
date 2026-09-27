@@ -57,6 +57,14 @@ export interface Shop {
   phone: string | null;
   email: string | null;
   logo_url: string | null;
+  country?: string | null;
+  state_code?: string | null;
+  pan?: string | null;
+  registration_type?: string | null;
+  bank_branch?: string | null;
+  declaration?: string | null;
+  invoice_layout?: InvoiceLayout;
+  unit_options?: string[];
   bank_name: string | null;
   bank_account: string | null;
   bank_ifsc: string | null;
@@ -88,7 +96,16 @@ export interface Supervisor {
   created_at: string;
 }
 
-export type ProductUnit = 'kg' | 'gm' | 'ltr' | 'ml' | 'packet' | 'bottle' | 'box' | 'piece';
+export type ProductUnit = string;
+export type InvoiceLayout = 'uniwest' | 'tejas';
+
+export interface DocumentDetails {
+  place_of_supply: string; state_code: string; reverse_charge: boolean;
+  delivery_note: string; delivery_note_date: string; dispatch_doc_no: string;
+  dispatched_through: string; destination: string; gr_rr_no: string; vehicle_number: string; station: string;
+  shipping_name: string; shipping_address: string; shipping_gstin: string; shipping_mobile: string;
+  shipping_state: string; shipping_state_code: string; terms_of_delivery: string; copy_label: string;
+}
 export type GstRate = 0 | 5 | 12 | 18;
 
 export interface Category {
@@ -107,6 +124,9 @@ export interface Product {
   hsn_code: string | null;
   unit: ProductUnit;
   pack_size: string | null;
+  pack_label?: string | null;
+  packing_type?: string | null;
+  units_per_pack?: number | null;
   purchase_price: string;
   selling_price: string;
   gst_rate: number;
@@ -121,6 +141,16 @@ export interface Product {
 }
 
 export interface Party {
+  state?: string | null;
+  state_code?: string | null;
+  country?: string | null;
+  pin?: string | null;
+  pan?: string | null;
+  registration_type?: string | null;
+  bank_name?: string | null;
+  bank_account?: string | null;
+  bank_ifsc?: string | null;
+
   id: string;
   name: string;
   type: string;
@@ -151,6 +181,8 @@ export interface StockMovement {
   rate: string;
   batch_number: string | null;
   expiry_date: string | null;
+  reference_exists?: boolean;
+  reference_cancelled?: boolean;
   reference_id: string | null;
   reference_type: 'purchase' | 'bill' | 'adjustment' | 'return' | null;
   notes: string | null;
@@ -181,9 +213,13 @@ export interface InventoryRow {
 }
 
 export interface Purchase {
+  document_type?: 'purchase' | 'purchase_order';
+  order_number?: string | null;
+  document_details?: Partial<DocumentDetails> | null;
+  shop?: BillDetail['shop'];
   id: string;
   party_id: string;
-  party?: { id: string; name: string };
+  party?: Party;
   purchase_date: string;
   invoice_number: string | null;
   gst_enabled?: boolean;
@@ -200,7 +236,16 @@ export interface Purchase {
   items?: Array<{
     id: string;
     product_id: string;
-    product?: { id: string; name: string; unit: ProductUnit };
+    product?: { id: string; name: string; brand?: string | null; unit: ProductUnit };
+    product_name?: string | null;
+    hsn_code?: string | null;
+    unit?: string | null;
+    pack_label?: string | null;
+    packing_type?: string | null;
+    units_per_pack?: number | null;
+    pack_count?: string | null;
+    list_price?: string;
+    discount_percent?: string;
     quantity: string;
     rate: string;
     gst_rate?: string;
@@ -228,6 +273,12 @@ export type BillPaymentStatus = 'paid' | 'unpaid' | 'partial';
 export type LedgerPaymentMode = 'cash' | 'upi' | 'cheque' | 'bank_transfer';
 
 export interface BillItem {
+  pack_label?: string | null;
+  packing_type?: string | null;
+  units_per_pack?: number | null;
+  pack_count?: string | null;
+  list_price?: string;
+  discount_percent?: string;
   id: string;
   bill_id: string;
   product_id: string | null;
@@ -244,6 +295,11 @@ export interface BillItem {
 }
 
 export interface BillRow {
+  quantity_summary?: string | null;
+  packing_summary?: string | null;
+  document_details?: Partial<DocumentDetails> | null;
+  round_off?: string;
+  previous_balance?: string;
   id: string;
   bill_number: string;
   bill_type: BillType;
@@ -306,7 +362,15 @@ export interface BillDetail extends BillRow {
     phone: string | null;
     email: string | null;
     logo_url: string | null;
-    bank_name: string | null;
+    country?: string | null;
+    state_code?: string | null;
+  pan?: string | null;
+  registration_type?: string | null;
+  bank_branch?: string | null;
+  declaration?: string | null;
+  invoice_layout?: InvoiceLayout;
+  unit_options?: string[];
+  bank_name: string | null;
     bank_account: string | null;
     bank_ifsc: string | null;
     bill_terms: string | null;

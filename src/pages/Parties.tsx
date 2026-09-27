@@ -22,6 +22,7 @@ import { AddEditPartyDialog } from '@/components/parties/AddEditPartyDialog';
 import { PartyPaymentDialog } from '@/components/parties/PartyPaymentDialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { formatCurrency, cn } from '@/lib/utils';
+import { useModulePermission } from '@/hooks/usePermissions';
 import { useActionNotify } from '@/hooks/useActionNotify';
 import type { Party } from '@/types';
 
@@ -69,6 +70,7 @@ function PartyAvatar({ name, type }: { name: string; type: string }) {
 
 export function PartiesPage() {
   const navigate = useNavigate();
+  const permission = useModulePermission('parties');
   const queryClient = useQueryClient();
   const { notify } = useActionNotify();
   const [search, setSearch] = useState('');
@@ -93,11 +95,11 @@ export function PartiesPage() {
     mutationFn: async (id: string) => api.delete(`/parties/${id}`),
     onSuccess: (_, id) => {
       const party = data.find((p) => p.id === id);
-      toast.success('Party deactivated');
-      notify('Party Deactivated', party ? `${party.name} has been deactivated` : 'Party deactivated');
+      toast.success('Party deleted from the active list');
+      notify('Party Deleted', party ? `${party.name} has been removed from the active list` : 'Party deleted');
       queryClient.invalidateQueries({ queryKey: ['parties'] });
     },
-    onError: () => toast.error('Failed to deactivate'),
+    onError: (err: { response?: { data?: { error?: string } } }) => toast.error(err.response?.data?.error || 'Failed to delete party'),
   });
 
   function openAdd() { setEditing(null); setDialogOpen(true); }
@@ -181,7 +183,7 @@ export function PartiesPage() {
                   <TableHead>GSTIN</TableHead><TableHead className="text-right">Bills</TableHead>
                   <TableHead className="text-right">Total amount</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
-                  <TableHead>Status</TableHead><TableHead></TableHead>
+                  <TableHead>Status</TableHead><TableHead className="sticky right-0 bg-slate-50 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -207,12 +209,12 @@ export function PartiesPage() {
                           : <span className="text-blue-700">{formatCurrency(outstanding)}</span>}
                       </TableCell>
                       <TableCell>{p.is_active ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
+                      <TableCell className="sticky right-0 bg-white">
+                        <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="sm" onClick={() => navigate(`/parties/${p.id}/ledger`)}><BookOpen className="mr-1.5 h-4 w-4" /> Ledger</Button>
                           <Button variant="ghost" size="sm" onClick={() => setPayParty(p)}><Wallet className="mr-1.5 h-4 w-4 text-emerald-600" /> Payment</Button>
-                          <Button variant="ghost" size="sm" onClick={() => { setEditing(p); setDialogOpen(true); }}><Pencil className="mr-1.5 h-4 w-4" /> Edit</Button>
-                          <Button variant="ghost" size="sm" onClick={() => setDeleting(p)}><Trash2 className="mr-1.5 h-4 w-4 text-red-500" /> Deactivate</Button>
+                          {permission.canEdit && <Button variant="outline" size="sm" aria-label="Edit party" onClick={() => { setEditing(p); setDialogOpen(true); }}><Pencil className="mr-1.5 h-4 w-4" /> Edit</Button>}
+                          {permission.canDelete && <Button variant="outline" size="sm" aria-label="Delete party" onClick={() => setDeleting(p)}><Trash2 className="mr-1.5 h-4 w-4 text-red-500" /> Delete</Button>}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -268,13 +270,13 @@ export function PartiesPage() {
                             <button onClick={() => { setPayParty(p); setMoreMenuId(null); }} className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                               <Wallet className="h-4 w-4 text-emerald-500" /> Record Payment
                             </button>
-                            <button onClick={() => { setEditing(p); setDialogOpen(true); setMoreMenuId(null); }} className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                            {permission.canEdit && <button onClick={() => { setEditing(p); setDialogOpen(true); setMoreMenuId(null); }} className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                               <Pencil className="h-4 w-4 text-slate-400" /> Edit
-                            </button>
+                            </button>}
                             <div className="my-1 border-t border-slate-100" />
-                            <button onClick={() => { setDeleting(p); setMoreMenuId(null); }} className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                              <Trash2 className="h-4 w-4" /> Deactivate
-                            </button>
+                            {permission.canDelete && <button onClick={() => { setDeleting(p); setMoreMenuId(null); }} className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
+                              <Trash2 className="h-4 w-4" /> Delete
+                            </button>}
                           </div>
                         )}
                       </div>
@@ -340,12 +342,14 @@ export function PartiesPage() {
                   >
                     <Wallet className="h-3.5 w-3.5" /> Payment
                   </button>
-                  <button
+                  {permission.canEdit && <button aria-label="Edit party"
                     onClick={() => { setEditing(p); setDialogOpen(true); }}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs text-slate-500 font-medium hover:bg-slate-50 transition-colors border-l border-slate-50"
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> Edit
-                  </button>
+                    className="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs text-slate-600 font-medium hover:bg-slate-50 border-l border-slate-50"
+                  ><Pencil className="h-3.5 w-3.5" /> Edit</button>}
+                  {permission.canDelete && <button aria-label="Delete party"
+                    onClick={() => setDeleting(p)}
+                    className="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs text-red-600 font-medium hover:bg-red-50 border-l border-slate-50"
+                  ><Trash2 className="h-3.5 w-3.5" /> Delete</button>}
                 </div>
               </div>
             );
@@ -369,9 +373,9 @@ export function PartiesPage() {
       />
       <ConfirmDialog
         open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}
-        title={`Deactivate ${deleting?.name ?? ''}?`}
-        description="The party will be hidden from new bills and purchases but existing transactions stay intact."
-        confirmLabel="Deactivate" destructive loading={deleteMutation.isPending}
+        title={`Delete ${deleting?.name ?? ''}?`}
+        description="This removes the party from the active list and new transactions. Existing bills, purchases, payments and ledger history are retained."
+        confirmLabel="Delete party" destructive loading={deleteMutation.isPending}
         onConfirm={() => { if (deleting) deleteMutation.mutate(deleting.id, { onSettled: () => setDeleting(null) }); }}
       />
     </div>

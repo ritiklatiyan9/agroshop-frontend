@@ -20,3 +20,7 @@ export function formatNumber(value: number | string | null | undefined, decimals
   if (Number.isNaN(n)) return '0';
   return n.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
+
+export function localDateInput(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}

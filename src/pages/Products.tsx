@@ -37,6 +37,7 @@ const STATUS_CHIPS = [
 
 /** "100 ml" when a pack size is set, otherwise just the unit. */
 function unitLabel(p: Product): string {
+  if (p.pack_label) return `${p.pack_label}${p.units_per_pack ? ` × ${p.units_per_pack}` : ''}${p.packing_type ? ` · ${p.packing_type}` : ''}`;
   const size = p.pack_size ? Number(p.pack_size) : 0;
   return size > 0 ? `${size} ${p.unit}` : p.unit;
 }
@@ -88,7 +89,7 @@ export function ProductsPage() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
-    onError: () => toast.error('Failed to permanently delete'),
+    onError: (err: { response?: { data?: { error?: string } } }) => toast.error(err.response?.data?.error || 'Failed to permanently delete'),
   });
 
   const importMutation = useMutation({
@@ -349,7 +350,7 @@ export function ProductsPage() {
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                    {[p.brand, p.category?.name, p.pack_size && Number(p.pack_size) > 0 ? unitLabel(p) : null].filter(Boolean).join(' · ') || '—'}
+                    {[p.brand, p.category?.name, p.pack_label || (p.pack_size && Number(p.pack_size) > 0) ? unitLabel(p) : null].filter(Boolean).join(' · ') || '—'}
                   </p>
                   {/* Price + Stock row */}
                   <div className="flex items-center gap-2 mt-2">

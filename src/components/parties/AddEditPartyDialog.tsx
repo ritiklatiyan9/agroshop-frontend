@@ -22,6 +22,16 @@ import { useActionNotify } from '@/hooks/useActionNotify';
 import type { Party } from '@/types';
 
 const schema = z.object({
+  state: z.string().optional(),
+  state_code: z.string().optional(),
+  country: z.string().optional(),
+  pin: z.string().optional(),
+  pan: z.string().optional(),
+  registration_type: z.string().optional(),
+  bank_name: z.string().optional(),
+  bank_account: z.string().optional(),
+  bank_ifsc: z.string().optional(),
+
   name: z.string().min(1, 'Required').max(200),
   type: z.string().min(1).max(50),
   mobile: z.string().max(24).optional(),
@@ -34,19 +44,29 @@ type FormInput = z.infer<typeof schema>;
 
 interface Props {
   party?: Party | null;
+  defaultType?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }
 
-export function AddEditPartyDialog({ party, open, onOpenChange }: Props) {
+export function AddEditPartyDialog({ party, open, onOpenChange, defaultType = 'customer' }: Props) {
   const queryClient = useQueryClient();
   const { notify } = useActionNotify();
 
   const form = useForm<FormInput>({
     resolver: zodResolver(schema),
     defaultValues: {
+      state: '',
+      state_code: '',
+      country: 'India',
+      pin: '',
+      pan: '',
+      registration_type: 'Regular',
+      bank_name: '',
+      bank_account: '',
+      bank_ifsc: '',
       name: '',
-      type: 'customer',
+      type: defaultType,
       mobile: '',
       gstin: '',
       address: '',
@@ -57,6 +77,15 @@ export function AddEditPartyDialog({ party, open, onOpenChange }: Props) {
   useEffect(() => {
     if (party) {
       form.reset({
+        state: party.state || '',
+        state_code: party.state_code || '',
+        country: party.country || 'India',
+        pin: party.pin || '',
+        pan: party.pan || '',
+        registration_type: party.registration_type || 'Regular',
+        bank_name: party.bank_name || '',
+        bank_account: party.bank_account || '',
+        bank_ifsc: party.bank_ifsc || '',
         name: party.name,
         type: party.type,
         mobile: party.mobile || '',
@@ -66,8 +95,17 @@ export function AddEditPartyDialog({ party, open, onOpenChange }: Props) {
       });
     } else {
       form.reset({
-        name: '',
-        type: 'customer',
+        state: '',
+      state_code: '',
+      country: 'India',
+      pin: '',
+      pan: '',
+      registration_type: 'Regular',
+      bank_name: '',
+      bank_account: '',
+      bank_ifsc: '',
+      name: '',
+        type: defaultType,
         mobile: '',
         gstin: '',
         address: '',
@@ -79,6 +117,15 @@ export function AddEditPartyDialog({ party, open, onOpenChange }: Props) {
   const mutation = useMutation({
     mutationFn: async (values: FormInput) => {
       const payload = {
+        state: values.state || null,
+        state_code: values.state_code || null,
+        country: values.country || null,
+        pin: values.pin || null,
+        pan: values.pan || null,
+        registration_type: values.registration_type || null,
+        bank_name: values.bank_name || null,
+        bank_account: values.bank_account || null,
+        bank_ifsc: values.bank_ifsc || null,
         name: values.name,
         type: values.type,
         mobile: values.mobile || null,
@@ -102,7 +149,7 @@ export function AddEditPartyDialog({ party, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{party ? 'Edit party' : 'New party'}</DialogTitle>
         </DialogHeader>
@@ -138,6 +185,7 @@ export function AddEditPartyDialog({ party, open, onOpenChange }: Props) {
               <Label>Address</Label>
               <Textarea rows={2} {...form.register('address')} />
             </div>
+<div className="space-y-1.5"><Label>State</Label><Input {...form.register('state')} /></div><div className="space-y-1.5"><Label>State code</Label><Input {...form.register('state_code')} /></div><div className="space-y-1.5"><Label>Country</Label><Input {...form.register('country')} /></div><div className="space-y-1.5"><Label>Pincode</Label><Input {...form.register('pin')} /></div><div className="space-y-1.5"><Label>PAN / IT number</Label><Input {...form.register('pan')} /></div><div className="space-y-1.5"><Label>Registration type</Label><Input {...form.register('registration_type')} /></div><div className="space-y-1.5"><Label>Bank name</Label><Input {...form.register('bank_name')} /></div><div className="space-y-1.5"><Label>Bank account</Label><Input {...form.register('bank_account')} /></div><div className="space-y-1.5"><Label>Bank IFSC</Label><Input {...form.register('bank_ifsc')} /></div>
             <div className="space-y-1.5 col-span-2">
               <Label>Opening balance (₹)</Label>
               <Input type="number" step="0.01" {...form.register('opening_balance')} />
