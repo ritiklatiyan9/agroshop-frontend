@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { openBillPrint } from '@/lib/printBill';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -560,7 +560,7 @@ export function NewBillPage({ billType: initialBillType }: Props) {
                   ))}
                 </div>
                 <div className="mt-3 hidden overflow-x-auto rounded-xl border border-slate-100 sm:block">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[900px] table-fixed text-sm">
                   <thead className="bg-slate-50">
                     <tr>
                       <th className="text-left px-2 py-2.5 w-8 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
@@ -577,7 +577,7 @@ export function NewBillPage({ billType: initialBillType }: Props) {
                       <th className="text-right px-2 py-2.5 w-24 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
                         Qty
                       </th>
-                      <th className="hidden sm:table-cell text-left px-2 py-2.5 w-20 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
+                      <th className="hidden sm:table-cell text-left px-2 py-2.5 w-24 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
                         Unit
                       </th>
                       <th className="text-right px-2 py-2.5 w-28 text-[10px] uppercase tracking-wide text-slate-500 font-semibold">
@@ -603,8 +603,8 @@ export function NewBillPage({ billType: initialBillType }: Props) {
                       const lineAmount = taxable + (taxable * gstRate) / 100;
                       const stockExceeded = row.product_id && qty > stockLimit(row);
                       return (
+                        <Fragment key={row.uid}>
                         <tr
-                          key={row.uid}
                           className={cn(
                             'group border-t border-slate-100 transition-colors',
                             stockExceeded ? 'bg-red-50/40' : 'hover:bg-slate-50/60',
@@ -621,7 +621,6 @@ export function NewBillPage({ billType: initialBillType }: Props) {
                               }
                               className="h-9 border-slate-200/0 hover:border-slate-200 focus:border-emerald-300 focus:ring-emerald-200 bg-transparent focus:bg-white"
                             />
-                            <PackingFields value={row} onChange={patch => updateLine(row.uid, patch)} />
                             {row.product_id && (
                               <div className="text-[10px] text-slate-400 ml-2 mt-0.5">
                                 Stock: {stockLimit(row)}
@@ -707,6 +706,13 @@ export function NewBillPage({ billType: initialBillType }: Props) {
                             </Button>
                           </td>
                         </tr>
+                        <tr className={stockExceeded ? 'bg-red-50/40' : undefined}>
+                          <td />
+                          <td colSpan={billType === 'gst' ? 8 : 6} className="px-1.5 pb-2 pt-0">
+                            <PackingFields value={row} onChange={patch => updateLine(row.uid, patch)} />
+                          </td>
+                        </tr>
+                        </Fragment>
                       );
                     })}
                   </tbody>

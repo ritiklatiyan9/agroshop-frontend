@@ -7,7 +7,7 @@ type Packing = Pick<BillItemInput, 'pack_label' | 'packing_type' | 'units_per_pa
 export function PackingFields({ value, onChange }: { value: Packing; onChange: (value: Partial<Packing>) => void }) {
   return <details className="mt-2 rounded-md border border-slate-100 p-2 text-xs">
     <summary className="cursor-pointer text-slate-500">{value.pack_label || 'Pack size / packing'}{value.units_per_pack ? ` × ${value.units_per_pack}` : ''}{value.packing_type ? ` · ${value.packing_type}` : ''}{value.discount_percent ? ` · ${value.discount_percent}% off` : ''}</summary>
-    <div className="mt-2 grid grid-cols-2 gap-2">
+    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
       <div><Label className="text-xs">Pack size</Label><UnitInput value={value.pack_label || ''} onValueChange={pack_label => onChange({ pack_label })} options={['50 ml', '100 ml', '200 ml', '250 ml', '500 ml', '1 ltr', '5 ltr', '100 gm', '250 gm', '1 kg', '5 kg']} placeholder="e.g. 250 ml" className="h-8 text-xs" /></div>
       <div><Label className="text-xs">Packing</Label><UnitInput value={value.packing_type || ''} onValueChange={packing_type => onChange({ packing_type })} options={['CARTON', 'BAG', 'BUCKET', 'BOX', 'BOTTLE']} placeholder="e.g. CARTON" className="h-8 text-xs" /></div>
       {([['units_per_pack', 'Units / pack', 'any'], ['pack_count', 'No. of packs', '0.001'], ['list_price', 'List price', '0.01'], ['discount_percent', 'Discount %', '0.01']] as const).map(([key, label, step]) => <div key={key}>
