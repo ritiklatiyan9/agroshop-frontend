@@ -277,8 +277,14 @@ export function NewBillPage({ billType: initialBillType }: Props) {
       toast.error('Add at least one item');
       return;
     }
-    if (!customerName.trim()) {
-      toast.error('Enter customer name');
+    const badQty = items.findIndex(i => !(Number(i.quantity) > 0));
+    if (badQty >= 0) {
+      toast.error(`Item ${badQty + 1} (${items[badQty].product_name || 'no name'}): enter a quantity`);
+      return;
+    }
+    const noName = items.findIndex(i => !i.product_name.trim());
+    if (noName >= 0) {
+      toast.error(`Item ${noName + 1}: enter the item name`);
       return;
     }
     if (paidAmount > summary.grand_total + 0.01) {
@@ -289,7 +295,7 @@ export function NewBillPage({ billType: initialBillType }: Props) {
       const bill = await mutation.mutateAsync();
       toast.success(`Bill ${bill.bill_number} ${id ? 'updated' : 'created'}`);
       await queryClient.invalidateQueries();
-      notify(id ? 'Bill Updated' : 'Bill Created', `${bill.bill_number} for ${customerName} saved successfully`);
+      notify(id ? 'Bill Updated' : 'Bill Created', `${bill.bill_number} for ${customerName || 'Walk-in Customer'} saved successfully`);
       if (printAfter || shop?.auto_print_after_save) {
         openBillPrint(bill.id, navigate);
       }
@@ -477,11 +483,11 @@ export function NewBillPage({ billType: initialBillType }: Props) {
           <Section icon={User} title="Customer" description="Pick a saved party or fill walk-in details">
             <PartySearchSelect parties={parties} value={party} onChange={selectParty} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-              <FieldLabel label="Name *" required>
+              <FieldLabel label="Name">
                 <Input
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Walk-in / customer name"
+                  placeholder="Walk-in Customer (leave blank for cash sale)"
                 />
               </FieldLabel>
               <FieldLabel label="Mobile">
@@ -1201,7 +1207,7 @@ function SummaryRow({
   );
 }
 
-const COMMON_GST_RATES = [0, 5, 12, 18, 28] as const;
+const COMMON_GST_RATES = [0, 5, 12, 18, 28, 40] as const;
 
 function GstRateInput({
   value,
@@ -1219,12 +1225,12 @@ function GstRateInput({
         <Input
           type="number"
           min={0}
-          max={28}
+          max={100}
           step={0.01}
           value={value}
           onChange={(e) => {
             const n = Number(e.target.value);
-            if (Number.isFinite(n)) onChange(Math.max(0, Math.min(28, n)));
+            if (Number.isFinite(n)) onChange(Math.max(0, Math.min(100, n)));
           }}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 120)}

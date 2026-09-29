@@ -46,7 +46,7 @@ export function ProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState<string>('all');
-  const [status, setStatus] = useState<'all' | 'active' | 'inactive' | 'low_stock' | 'expired'>('all');
+  const [status, setStatus] = useState<'all' | 'active' | 'inactive' | 'low_stock' | 'expired'>('active');
   const [editing, setEditing] = useState<Product | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [ledgerProduct, setLedgerProduct] = useState<Product | null>(null);
@@ -77,7 +77,7 @@ export function ProductsPage() {
       notify('Product Deactivated', product ? `${product.name} has been deactivated` : 'Product deactivated');
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
-    onError: () => toast.error('Failed to delete'),
+    onError: (err: { response?: { data?: { error?: string } } }) => toast.error(err.response?.data?.error || 'Failed to deactivate'),
   });
 
   const permanentDeleteMutation = useMutation({
@@ -253,7 +253,7 @@ export function ProductsPage() {
                         ? <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-md object-cover" />
                         : <div className="h-10 w-10 rounded-md bg-slate-100 flex items-center justify-center text-slate-400 text-xs">—</div>}
                     </TableCell>
-                    <TableCell className="font-medium text-slate-900">{p.name}</TableCell>
+                    <TableCell className="font-medium text-slate-900">{p.name}{!p.is_active && <Badge variant="muted" className="ml-2">Inactive</Badge>}</TableCell>
                     <TableCell>{p.brand || '—'}</TableCell>
                     <TableCell>{p.category?.name || '—'}</TableCell>
                     <TableCell>{unitLabel(p)}</TableCell>
@@ -404,7 +404,7 @@ export function ProductsPage() {
       <ConfirmDialog
         open={!!permanentDeleting} onOpenChange={(v) => !v && setPermanentDeleting(null)}
         title={`Permanently delete "${permanentDeleting?.name ?? ''}"?`}
-        description="This removes the product and its stock history for good and cannot be undone. Historical bills are preserved."
+        description="This removes the product and its stock history for good and cannot be undone. Old bills and purchases keep the item name, qty and rate."
         confirmLabel="Delete permanently" destructive loading={permanentDeleteMutation.isPending}
         onConfirm={() => { if (permanentDeleting) permanentDeleteMutation.mutate(permanentDeleting.id, { onSettled: () => setPermanentDeleting(null) }); }}
       />
